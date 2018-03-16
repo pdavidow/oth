@@ -1,10 +1,15 @@
 module Lib
-    ( slice
+    ( vSlice
     )
     where
 
-import Data.List
+import Data.Function ( (&) )
+import Data.Vector ( fromList, slice, toList )
 
--- https://stackoverflow.com/questions/4597820/does-haskell-have-list-slices-i-e-python
-slice :: Int -> Int -> [a] -> [a]
-slice start stop xs = fst $ splitAt (stop - start) (snd $ splitAt start xs)
+
+vSlice :: Int -> Int -> [a] -> [a]
+vSlice start len xs =
+    xs
+        & fromList 
+        & slice start len
+        & toList 
