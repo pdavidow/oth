@@ -1,13 +1,18 @@
 module Position
     ( Position
+    , PosRow(..)
     , adjacentPositions
-    , raysFrom
+    , radiatingPosRows
     )
     where
+
+import Data.Function ( (&) )
 
 import BoardSize ( boardSize )
 
 type Position = ( Int, Int )
+
+newtype PosRow = PosRow [Position]  deriving (Eq, Show) -- horiz, vert, diag
 
 data Dir = Inc | Dec
 
@@ -21,89 +26,98 @@ adjacentPositions (i, j) =
             , (i-1, j+1), (i, j+1), (i+1, j+1)
             ]
 
-        isInRange = \ x -> x >= 1 && x <= boardSize
-        f = \ (i',j') -> isInRange i' && isInRange j'
+        isInRange = \ x -> (x >= 1) && (x <= boardSize)
     in
-        filter f candidates
+        candidates
+            & filter (\ (i', j') -> isInRange i' && isInRange j') 
 
 
-raysFrom :: Position -> [[Position]]
-raysFrom pos =
-    [rayFrom_VertUp pos] ++
-    [rayFrom_VertDown pos] ++
+radiatingPosRows :: Position -> [PosRow] 
+radiatingPosRows pos =
+    -- does NOT include starting pos
+    let 
+        candidates =
+            [rowVertUp pos] ++
+            [rowVertDown pos] ++
 
-    [rayFrom_HorizRight pos] ++
-    [rayFrom_HorizLeft pos] ++
+            [rowHorizRight pos] ++
+            [rowHorizLeft pos] ++
 
-    [rayFrom_DiagUpRight pos] ++
-    [rayFrom_DiagUpLeft pos] ++
+            [rowDiagUpRight pos] ++
+            [rowDiagUpLeft pos] ++
 
-    [rayFrom_DiagDownRight pos] ++
-    [rayFrom_DiagDownLeft pos]         
-
-
-rayFrom_VertUp :: Position -> [Position]
-rayFrom_VertUp (i,j) =   
-    [(i',j') | i' <- reverse [1..i], j' <- [j]]
-
-
-rayFrom_VertDown :: Position -> [Position]
-rayFrom_VertDown (i,j) =   
-    [(i',j') | i' <- [i..boardSize], j' <- [j]]
+            [rowDiagDownRight pos] ++
+            [rowDiagDownLeft pos]         
+    in
+        candidates
+            & filter (\ (PosRow row) -> not $ null row)
 
 
-rayFrom_HorizRight :: Position -> [Position]
-rayFrom_HorizRight (i,j) =   
-    [(i',j') | i' <- [i], j' <- [j..boardSize]]
+rowVertUp :: Position -> PosRow
+rowVertUp (i, j) =   
+    PosRow $ [ (i',j') | i' <- reverse [1..(i-1)], j' <- [j] ]
 
 
-rayFrom_HorizLeft :: Position -> [Position]
-rayFrom_HorizLeft (i,j) =   
-    [(i',j') | i' <- [i], j' <- reverse [1..j]]
+rowVertDown :: Position -> PosRow
+rowVertDown (i, j) =   
+    PosRow $ [ (i',j') | i' <- [(i+1)..boardSize], j' <- [j] ]
+
+
+rowHorizRight :: Position -> PosRow
+rowHorizRight (i, j) =   
+    PosRow $ [ (i',j') | i' <- [i], j' <- [(j+1)..boardSize] ]
+
+
+rowHorizLeft :: Position -> PosRow
+rowHorizLeft (i, j) =   
+    PosRow $ [ (i',j') | i' <- [i], j' <- reverse [1..(j-1)] ]
         
 
-rayFrom_DiagUpRight :: Position -> [Position]
-rayFrom_DiagUpRight pos =  
-    rayFromDiag Dec Inc pos
+rowDiagUpRight :: Position -> PosRow
+rowDiagUpRight (i, j) =  
+    rowDiag Dec Inc (i-1, j+1)
 
 
-rayFrom_DiagUpLeft :: Position -> [Position]
-rayFrom_DiagUpLeft pos =
-    rayFromDiag Dec Dec pos
+rowDiagUpLeft :: Position -> PosRow
+rowDiagUpLeft (i, j) = 
+    rowDiag Dec Dec (i-1, j-1)
 
 
-rayFrom_DiagDownRight :: Position -> [Position]
-rayFrom_DiagDownRight pos =  
-    rayFromDiag Inc Inc pos
+rowDiagDownRight :: Position -> PosRow
+rowDiagDownRight (i, j) = 
+    rowDiag Inc Inc (i+1, j+1)
 
 
-rayFrom_DiagDownLeft :: Position -> [Position]
-rayFrom_DiagDownLeft pos =
-    rayFromDiag Inc Dec pos
+rowDiagDownLeft :: Position -> PosRow
+rowDiagDownLeft (i, j) =
+    rowDiag Inc Dec (i+1, j-1)
 
 
-rayFromDiag :: Dir -> Dir -> Position -> [Position]
-rayFromDiag rowDir colDir (i,j) =
+rowDiag :: Dir -> Dir -> Position -> PosRow
+rowDiag horizDir vertDir (i,j) =
     let
-        limits = case (rowDir, colDir) of
-            (Inc, Inc) -> (boardSize, boardSize)
-            (Inc, Dec) -> (boardSize, 1)
-            (Dec, Inc) -> (1, boardSize)
-            (Dec, Dec) -> (1, 1)
+        isExceededLimits :: Int -> Int -> Bool
+        isExceededLimits = \ x y -> 
+            case (horizDir, vertDir) of
+                (Inc, Inc) -> (x > boardSize) || (y > boardSize)
+                (Inc, Dec) -> (x > boardSize) || (y < 1)
+                (Dec, Inc) -> (x < 1)         || (y > boardSize)
+                (Dec, Dec) -> (x < 1)         || (y < 1)
 
-        op dir = 
+        f :: Dir -> (Int -> Int)
+        f = \ dir -> 
             case dir of
                 Inc -> ( 1 +) 
                 Dec -> (-1 +) 
                 
         go result x y = 
-            if x == fst limits || y == snd limits then
+            if isExceededLimits x y then
                 result
             else
                 let 
-                    x' = op rowDir x
-                    y' = op colDir y
+                    x' = f horizDir x
+                    y' = f vertDir y
                 in 
-                    go (result ++ [(x', y')]) x' y'
+                    go (result ++ [(x, y)]) x' y'
     in
-        go [(i,j)] i j
+        PosRow $ go [] i j
