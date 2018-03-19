@@ -26,7 +26,7 @@ import Data.Function ( (&) )
 
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
-import Lib ( vSlice ) 
+import Lib ( mapTakeWhile, vSlice ) 
 
 
 data Disk = Disk {_initColor :: Color,  _flipCount :: Int} deriving (Eq, Show)
@@ -202,8 +202,7 @@ toPos boardSquare =
 contiguousFilledRow :: PosRow -> Board -> FilledRow
 contiguousFilledRow (PosRow ps) board =
     ps
-        & map (\ p -> boardAt board p) -- todo little wasteful
-        & takeWhile isFilledSquare 
+        & mapTakeWhile (\ p -> boardAt board p) isFilledSquare
         & mapMaybe toFilledSquare
         & FilledRow
 
