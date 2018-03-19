@@ -1,5 +1,9 @@
 module Board
     ( Color(..)
+    , EmptySquare(..)
+    , Move(..)
+    , FilledRow(..)
+    , BoardSquare(..)
     , initialBoard
     , validMoves
     , board_DisplayString
@@ -9,6 +13,7 @@ module Board
     , makeWhiteDisk
     , makeBlackDisk
     , boardAt
+    , toPos
     )
     where
 
@@ -43,15 +48,17 @@ newtype Board = Board (Array Position BoardSquare) deriving (Eq, Show)
 
 newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show) -- horiz, vert, diag
 
-data Move = Move {_square :: EmptySquare,  _outflanks :: [FilledRow]} deriving (Eq, Show)
+data Move = Move {_color :: Color, _square :: EmptySquare,  _outflanks :: [FilledRow]} deriving (Eq, Show)
 
 ------------------
 
 instance Eq EmptySquare where
     (EmptySquare pos1 _) == (EmptySquare pos2 _) = pos1 == pos2 
 
+
 instance Show EmptySquare where
     show (EmptySquare pos _) = "EmptySquare " ++ show pos    
+
 
 instance Show FilledSquare where
     show (FilledSquare disk (EmptySquare pos _)) = "FilledSquare " ++ show pos ++ " " ++ show disk  
@@ -87,6 +94,14 @@ makeWhiteDisk =
 makeBlackDisk :: Disk
 makeBlackDisk = 
     makeDisk Black
+
+
+diskColor :: Disk -> Color
+diskColor disk =
+    if even $ _flipCount disk then
+        _initColor disk
+    else
+        toggleColor $ _initColor disk
 
 
 initialBoard :: Board
@@ -189,7 +204,7 @@ toPos boardSquare =
 contiguousFilledRow :: PosRow -> Board -> FilledRow
 contiguousFilledRow (PosRow ps) board =
     ps
-        & map (\ p -> boardAt board p) -- todo wasteful, use fold
+        & map (\ p -> boardAt board p) -- todo wasteful, use fold ?
         & takeWhile isFilledSquare 
         & mapMaybe toFilledSquare
         & FilledRow
@@ -232,7 +247,11 @@ validMove color emptySquare board =
         if null candidates then
             Nothing
         else
-            Just $ Move {_square = emptySquare, _outflanks = candidates}
+            Just $ Move 
+                { _color = color
+                , _square = emptySquare
+                , _outflanks = candidates
+                }
 
 
 validMoves :: Color -> Board -> [Move]
@@ -249,8 +268,8 @@ boardSquare_DisplayString boardSquare =
             string = 
                 case boardSquare of
                     Board_EmptySquare _ -> "-"
-                    Board_FilledSquare (FilledSquare (Disk color _) _)  ->
-                        case color of
+                    Board_FilledSquare (FilledSquare disk _)  ->
+                        case diskColor disk of
                             Black -> "x"
                             White -> "o"
         in
@@ -270,24 +289,3 @@ board_DisplayString (Board board) =
         boardString = concat $ concat $ map f [1..boardSize]             
     in
         colLegend ++ boardString 
-
--------------------------------------------------
-
--- todo temp only
-board_Figure2 :: Board
-board_Figure2 =
-    let
-      board = makeBoard
-    in
-        board -- http://www.boardgamecapital.com/game_rules/othello.pdf
-            & place makeWhiteDisk (boardAt board (3,3)) 
-            & place makeWhiteDisk (boardAt board (3,7))
-            & place makeWhiteDisk (boardAt board (7,5))
-
-            & place makeBlackDisk (boardAt board (4,3))
-            & place makeBlackDisk (boardAt board (4,6))
-            & place makeBlackDisk (boardAt board (5,3))
-            & place makeBlackDisk (boardAt board (5,5))
-            & place makeBlackDisk (boardAt board (6,3))
-            & place makeBlackDisk (boardAt board (6,4))
-            & place makeBlackDisk (boardAt board (7,4))
