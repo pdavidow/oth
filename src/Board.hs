@@ -8,12 +8,10 @@ module Board
     , validMoves
     , board_DisplayString
 
-    , makeBoard
-    , place
-    , makeWhiteDisk
-    , makeBlackDisk
-    , boardAt
+    , boardFromConfig
     , toPos
+    , applyMove
+    , filledPositions
     )
     where
 
@@ -22,7 +20,7 @@ module Board
     -- where
 
 import Data.Maybe ( mapMaybe  )
-import Data.List ( nub )
+import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 
@@ -86,14 +84,15 @@ makeDisk color =
     Disk {_initColor = color,  _flipCount = 0}
 
 
-makeWhiteDisk :: Disk
-makeWhiteDisk = 
-    makeDisk White
+-- todo unused?
+-- makeWhiteDisk :: Disk
+-- makeWhiteDisk = 
+--     makeDisk White
 
 
-makeBlackDisk :: Disk
-makeBlackDisk = 
-    makeDisk Black
+-- makeBlackDisk :: Disk
+-- makeBlackDisk = 
+--     makeDisk Black
 
 
 diskColor :: Disk -> Color
@@ -104,16 +103,15 @@ diskColor disk =
         toggleColor $ _initColor disk
 
 
+boardFromConfig :: [(Color, Position)] -> Board
+boardFromConfig config =
+    config
+        & foldl' (\ acc ((color, pos)) -> place (makeDisk color) (boardAt acc pos) acc) makeBoard
+
+
 initialBoard :: Board
 initialBoard =
-    let
-        board = makeBoard
-    in
-        board -- assume: boardSize = 8
-            & place makeWhiteDisk (boardAt board (4,4)) 
-            & place makeBlackDisk (boardAt board (4,5))
-            & place makeBlackDisk (boardAt board (5,4))
-            & place makeWhiteDisk (boardAt board (5,5))
+    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))]
 
 
 boardAt :: Board -> Position -> BoardSquare
@@ -204,7 +202,7 @@ toPos boardSquare =
 contiguousFilledRow :: PosRow -> Board -> FilledRow
 contiguousFilledRow (PosRow ps) board =
     ps
-        & map (\ p -> boardAt board p) -- todo wasteful, use fold ?
+        & map (\ p -> boardAt board p) -- todo little wasteful
         & takeWhile isFilledSquare 
         & mapMaybe toFilledSquare
         & FilledRow
@@ -239,6 +237,12 @@ squaresColored color board =
     filter (\ x -> isSquareColored color x) $ filledSquares board
 
 
+filledPositions :: Color -> Board -> [Position]
+filledPositions color board = 
+    squaresColored color board
+        & map (\ x -> toPos $ Board_FilledSquare x)
+
+
 validMove :: Color -> EmptySquare -> Board -> Maybe Move
 validMove color emptySquare board = 
     let
@@ -262,6 +266,24 @@ validMoves color board =
         & mapMaybe (\ emptySquare -> validMove color emptySquare board) 
            
              
+applyMove :: Move -> Board -> Board
+applyMove move board =
+    let
+        disk = makeDisk $ _color move
+        boardSquare = Board_EmptySquare $ _square move
+
+        flipOutflanks :: Board -> Board
+        flipOutflanks board' =
+            _outflanks move
+                & map (\ (FilledRow xs) -> xs)
+                & concat
+                & foldl' (\ acc x -> flipAt (Board_FilledSquare x) acc) board'
+    in
+        board
+            & place disk boardSquare
+            & flipOutflanks
+
+
 boardSquare_DisplayString :: BoardSquare -> String
 boardSquare_DisplayString boardSquare =
         let 
