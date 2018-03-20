@@ -25,7 +25,7 @@ import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 
-import Disk ( Disk(..), Color(..), diskColor, flipDisk, makeDisk, toggleColor )
+import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
 import ColumnName ( columnLegend, posNomenclature )
