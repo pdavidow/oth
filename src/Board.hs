@@ -1,5 +1,6 @@
 module Board
-    ( EmptySquare(..)
+    ( Board
+    , EmptySquare(..)
     , Move(..)
     , FilledRow(..)
     , BoardSquare(..)
@@ -180,7 +181,7 @@ radiatingFilledRows emptySquare board =
 outflanks :: Color -> EmptySquare -> Board -> [FilledRow]
 outflanks color emptySquare board =
     radiatingFilledRows emptySquare board
-        & filter (\ (FilledRow row) -> length row >= 2) 
+        & filter (\ (FilledRow row) -> length row >= 2) -- plus ensures safe head & tail
         & filter (\ (FilledRow row) -> isSquareColored toggledColor $ head row)  
         & filter (\ (FilledRow row) -> any (\ x -> isSquareColored color x) $ tail row)
         & map (\ (FilledRow row) -> FilledRow $ takeWhile (\ x -> isSquareColored toggledColor x) row)
@@ -235,7 +236,8 @@ movePos (Move _ (EmptySquare pos _) _) =
 
 moveChoices :: [Move] -> String
 moveChoices xs =
-    (zip [(1 :: Int)..] xs) -- 1 based
+    -- 1 based
+    (zip [(1 :: Int)..] xs) 
         & concatMap (\ (i, x) -> show i ++ ":" ++ (posNomenclature $ movePos x) ++ " ") 
 
 
