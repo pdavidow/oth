@@ -1,5 +1,5 @@
 module Disk
-    ( Disk(..)
+    ( Disk -- hiding constructor
     , Color(..)
     , diskColor
     , flipDisk
