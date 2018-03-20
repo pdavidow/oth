@@ -1,17 +1,18 @@
 module Board
-    ( Color(..)
-    , EmptySquare(..)
+    ( EmptySquare(..)
     , Move(..)
     , FilledRow(..)
     , BoardSquare(..)
     , initialBoard
     , validMoves
+    , moveChoices
     , board_DisplayString
 
     , boardFromConfig
     , toPos
     , applyMove
     , filledPositions
+    , squaresColored
     )
     where
 
@@ -19,19 +20,17 @@ module Board
     -- ( )
     -- where
 
-import Data.Maybe ( mapMaybe  )
+import Data.Maybe ( fromMaybe, mapMaybe  )
 import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 
+import Disk ( Disk(..), Color(..), diskColor, flipDisk, makeDisk, toggleColor )
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
+import ColumnName ( columnLegend, posNomenclature )
 import Lib ( mapTakeWhile, vSlice ) 
 
-
-data Disk = Disk {_initColor :: Color,  _flipCount :: Int} deriving (Eq, Show)
-
-data Color = Black | White deriving (Eq, Show)
 
 data EmptySquare = EmptySquare {_pos :: Position, _radiatingPosRows :: [PosRow]}
 
@@ -79,30 +78,6 @@ makeFilledSquare disk emptySquare =
     FilledSquare disk emptySquare
 
 
-makeDisk :: Color -> Disk
-makeDisk color = 
-    Disk {_initColor = color,  _flipCount = 0}
-
-
--- todo unused?
--- makeWhiteDisk :: Disk
--- makeWhiteDisk = 
---     makeDisk White
-
-
--- makeBlackDisk :: Disk
--- makeBlackDisk = 
---     makeDisk Black
-
-
-diskColor :: Disk -> Color
-diskColor disk =
-    if even $ _flipCount disk then
-        _initColor disk
-    else
-        toggleColor $ _initColor disk
-
-
 boardFromConfig :: [(Color, Position)] -> Board
 boardFromConfig config =
     config
@@ -139,18 +114,6 @@ flipAt boardSquare board =
         Board_FilledSquare (FilledSquare disk emptySquare) -> fillAt emptySquare (flipDisk disk) board
 
 
-flipDisk :: Disk -> Disk
-flipDisk (Disk color flipCount) =
-    Disk (toggleColor color) $ flipCount + 1
-
-
-toggleColor :: Color -> Color
-toggleColor color = 
-    case color of
-        White -> Black
-        Black -> White
-
-
 toEmptySquare :: BoardSquare -> Maybe EmptySquare
 toEmptySquare boardSquare =
     case boardSquare of 
@@ -176,8 +139,8 @@ filledSquares (Board board) =
 
 
 isSquareColored :: Color -> FilledSquare -> Bool
-isSquareColored color (FilledSquare (Disk color' _) _) =
-    color == color'
+isSquareColored color (FilledSquare disk _) =
+    color == diskColor disk
 
 
 isEmptySquare :: BoardSquare -> Bool
@@ -263,8 +226,19 @@ validMoves color board =
         & concatMap (\ filledSquare -> adjacentEmptySquares (Board_FilledSquare filledSquare) board)
         & nub 
         & mapMaybe (\ emptySquare -> validMove color emptySquare board) 
-           
-             
+         
+        
+movePos :: Move -> Position
+movePos (Move _ (EmptySquare pos _) _) =
+    pos
+
+
+moveChoices :: [Move] -> String
+moveChoices xs =
+    (zip [(1 :: Int)..] xs) -- 1 based
+        & concatMap (\ (i, x) -> show i ++ ":" ++ (posNomenclature $ movePos x) ++ " ") 
+
+
 applyMove :: Move -> Board -> Board
 applyMove move board =
     let
@@ -274,8 +248,7 @@ applyMove move board =
         flipOutflanks :: Board -> Board
         flipOutflanks board' =
             _outflanks move
-                & map (\ (FilledRow xs) -> xs)
-                & concat
+                & concatMap (\ (FilledRow xs) -> xs)
                 & foldl' (\ acc x -> flipAt (Board_FilledSquare x) acc) board'
     in
         board
@@ -300,7 +273,7 @@ boardSquare_DisplayString boardSquare =
 board_DisplayString :: Board -> String
 board_DisplayString (Board board) =
     let
-        colLegend = "   A  B  C  D  E  F  G  H\n" 
+        header = "   " ++ columnLegend ++ "\n" 
 
         f = \ i -> 
             [show i ++ " "] 
@@ -309,4 +282,4 @@ board_DisplayString (Board board) =
 
         boardString = concat $ concat $ map f [1..boardSize]             
     in
-        colLegend ++ boardString 
+        header ++ boardString 

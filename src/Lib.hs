@@ -8,8 +8,12 @@ import Data.Function ( (&) )
 import Data.Vector ( fromList, slice, toList )
 
 
+-- todo need to test independently
 mapTakeWhile :: (a -> b) -> (b -> Bool) -> [a] -> [b]
-mapTakeWhile _ _ [] =  []
+
+mapTakeWhile _ _ [] = 
+    []
+
 mapTakeWhile f p (x:xs) =
     let
         result = f x
