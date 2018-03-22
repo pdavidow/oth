@@ -6,8 +6,10 @@ module Board
     , BoardSquare(..)
     , initialBoard
     , validMoves
-    , moveChoices
+    , movePosChoices
+    , movePosChoicesNomenclature
     , board_DisplayString
+    , boardWithValidMoves_DisplayString
     , boardFromConfig
     , toPos
     , applyMove
@@ -22,7 +24,7 @@ module Board
     -- where
 
 import Data.Maybe ( fromMaybe, mapMaybe  )
-import Data.List ( foldl', nub )
+import Data.List ( find, foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 import qualified Data.Map.Strict as Map ( Map, empty, insert )
@@ -260,11 +262,17 @@ movePos (Move _ (EmptySquare pos _) _) =
     pos
 
 
-moveChoices :: [Move] -> String
-moveChoices xs =
+movePosChoices :: [Move] -> [(Int, Position)]
+movePosChoices xs =
     -- 1 based
-    (zip [(1 :: Int)..] xs) 
-        & concatMap (\ (i, x) -> show i ++ ":" ++ (posNomenclature $ movePos x) ++ " ") 
+    map movePos xs
+        & zip [(1 :: Int)..] -- lazy, so infinite list is fine
+
+
+movePosChoicesNomenclature :: [(Int, Position)] -> String
+movePosChoicesNomenclature xs =
+    xs
+        & concatMap (\ ((i, pos)) -> show i ++ ":" ++ posNomenclature pos ++ " ") 
 
 
 applyMove :: Move -> Board -> Board
@@ -284,27 +292,52 @@ applyMove move board =
             & flipOutflanks
 
 
-boardSquare_DisplayString :: BoardSquare -> String
-boardSquare_DisplayString boardSquare =
+boardSquare_DisplayString :: Maybe (Position -> String) -> BoardSquare -> String
+boardSquare_DisplayString mbF boardSquare =
         let 
+            emptySquareString = case mbF of
+                Just f -> f $ toPos boardSquare
+                Nothing -> defaultEmptySquareString
+
             string = 
                 case boardSquare of
-                    Board_EmptySquare _ -> "+" --"-"
-                    Board_FilledSquare (FilledSquare disk _)  -> [iconChar $ diskColor disk]
+                    Board_EmptySquare _ -> emptySquareString 
+                    Board_FilledSquare (FilledSquare disk _) -> [iconChar $ diskColor disk]
         in
             " " ++ string ++ " "    
 
 
-board_DisplayString :: Board -> String
-board_DisplayString (Board board) =
+boardWithCustomEmptySquare_DisplayString :: Maybe (Position -> String) -> Board -> String
+boardWithCustomEmptySquare_DisplayString mbF (Board board) =
     let
         header = "   " ++ columnLegend ++ "\n"
 
         f = \ i -> 
             [show i ++ " "] 
-                ++ (map boardSquare_DisplayString $ vSlice ((i - 1) * boardSize) boardSize $ elems board) 
+                ++ (map (boardSquare_DisplayString mbF) $ vSlice ((i - 1) * boardSize) boardSize $ elems board) 
                     ++ ["\n"]
 
         boardString = concat $ concat $ map f [1..boardSize]             
     in
         header ++ boardString 
+
+
+board_DisplayString :: Board -> String
+board_DisplayString b =
+    boardWithCustomEmptySquare_DisplayString Nothing b
+
+
+boardWithValidMoves_DisplayString :: [(Int, Position)] -> Board -> String
+boardWithValidMoves_DisplayString xs b =
+    let
+        f = \ pos -> 
+            case find (\ ((_, pos')) -> pos == pos') xs of
+                Just (moveN, _) -> show moveN
+                Nothing -> defaultEmptySquareString
+    in
+        boardWithCustomEmptySquare_DisplayString (Just f) b
+
+
+defaultEmptySquareString :: String
+defaultEmptySquareString = 
+    "." 

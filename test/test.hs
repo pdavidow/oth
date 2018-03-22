@@ -7,7 +7,7 @@ import Test.Tasty.HUnit
 
 import Data.Function ( (&) )
 
-import Board ( EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), initialBoard, validMoves, board_DisplayString, boardFromConfig, toPos, applyMove, filledPositions )
+import Board ( EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), initialBoard, validMoves, board_DisplayString, boardFromConfig, toPos, applyMove, filledPositions, boardWithValidMoves_DisplayString, movePosChoices)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..) )
 
@@ -52,8 +52,15 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-          board_DisplayString initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  +  +  +  +  +  +  +  + \n2  +  +  +  +  +  +  +  + \n3  +  +  +  +  +  +  +  + \n4  +  +  +  O  X  +  +  + \n5  +  +  +  X  O  +  +  + \n6  +  +  +  +  +  +  +  + \n7  +  +  +  +  +  +  +  + \n8  +  +  +  +  +  +  +  + \n"
+          board_DisplayString initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
           
+
+        , testCase "boardWithValidMoves_DisplayString" $
+          let
+              board = initialBoard
+          in
+              boardWithValidMoves_DisplayString (movePosChoices $ validMoves Black board) board @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
+
         , testGroup "validMoves Black initialBoard" $
             let
                 moves = validMoves Black initialBoard
