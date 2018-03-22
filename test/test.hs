@@ -52,7 +52,7 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-          board_DisplayString initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  -  -  -  -  -  -  -  - \n2  -  -  -  -  -  -  -  - \n3  -  -  -  -  -  -  -  - \n4  -  -  -  o  x  -  -  - \n5  -  -  -  x  o  -  -  - \n6  -  -  -  -  -  -  -  - \n7  -  -  -  -  -  -  -  - \n8  -  -  -  -  -  -  -  - \n"
+          board_DisplayString initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  +  +  +  +  +  +  +  + \n2  +  +  +  +  +  +  +  + \n3  +  +  +  +  +  +  +  + \n4  +  +  +  O  X  +  +  + \n5  +  +  +  X  O  +  +  + \n6  +  +  +  +  +  +  +  + \n7  +  +  +  +  +  +  +  + \n8  +  +  +  +  +  +  +  + \n"
           
         , testGroup "validMoves Black initialBoard" $
             let

@@ -289,7 +289,7 @@ boardSquare_DisplayString boardSquare =
         let 
             string = 
                 case boardSquare of
-                    Board_EmptySquare _ -> "-"
+                    Board_EmptySquare _ -> "+" --"-"
                     Board_FilledSquare (FilledSquare disk _)  -> [iconChar $ diskColor disk]
         in
             " " ++ string ++ " "    

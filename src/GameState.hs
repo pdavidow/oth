@@ -26,7 +26,6 @@ data EndLifecycleGameState   = EndLifecycleGameState EndReason GameState derivin
 data EndReason
     = NoUnusedDisksForBoth
     | NoValidMoves
-    -- todo  | more?
         deriving (Eq, Show)
 
 data GameSummary = GameSummary EndReason BlackSquareCount WhiteSquareCount deriving (Eq, Show)
@@ -67,9 +66,8 @@ makeStartLifecycleGameState =
 
 -- startLifecycle :: StartLifecycleGameState -> MidLifecycleGameState
 -- startLifecycle (StartLifecycleGameState ((NextToMove Color) bCount wCount board)) =
--- used monad stuff here?
-
   
+
 isZeroUnusedDiskCount :: Color -> GameState -> Bool
 isZeroUnusedDiskCount color (GameState _ _ b w _) =
     case color of
@@ -94,6 +92,7 @@ continueLifecycle mg@(MidLifecycleGameState g@(GameState n@(NextToMove color) p@
         isZeroUnusedOpp = isZeroUnusedDiskCount_Tagged oppColor $ MidLifecycle mg
 
         end_NoUnusedDisksForBoth = EndLifecycleGameState NoUnusedDisksForBoth g
+        end_NoValidMoves = EndLifecycleGameState NoValidMoves g
         continue_Opp = \ b w someBoard -> continueLifecycle $ MidLifecycleGameState $ GameState (NextToMove oppColor) (PossibleMoves $ validMoves oppColor someBoard) b w someBoard
         continue_Same = \ b w -> continueLifecycle $ MidLifecycleGameState $ GameState n p b w board 
     in
@@ -109,7 +108,7 @@ continueLifecycle mg@(MidLifecycleGameState g@(GameState n@(NextToMove color) p@
                 in
                     continue_Same bCount' wCount'
             else
-                continue_Opp bCount wCount board
+                end_NoValidMoves
         else
             let
                 m = decreaseByOneFor color bCount wCount
@@ -118,7 +117,9 @@ continueLifecycle mg@(MidLifecycleGameState g@(GameState n@(NextToMove color) p@
                 (WhiteUnused wCount') = m Map.! White
             in
                 --  somehow make move which gives board' ---------------------------------------------------------------
-                end_NoUnusedDisksForBoth --continue_Opp bCount' wCount' board'
+                end_NoUnusedDisksForBoth -- temp ========================================
+                
+                --continue_Opp bCount' wCount' board'
 
 
 winner :: GameSummary -> Winner
@@ -145,36 +146,7 @@ gameSummary (EndLifecycleGameState reason (GameState _ _ _ _ board)) =
         w = makeWhiteSquareCount $ m Map.! White
     in
         GameSummary reason b  w
-
-
--- -- WRONG (try to decrease rule9) then move
--- blackMoved :: Board -> GameState -> GameState
--- blackMoved board (GameState b w _) =
---     let
---        (Tagged_BlackUnusedDiskCount b') = decreaseByOne $ Tagged_BlackUnusedDiskCount b
---     in
---         GameState b' w board
-
-
--- -- WRONG (try to decrease rule9) then move
--- whiteMoved :: Board -> GameState -> GameState
--- whiteMoved board (GameState b w _) =
---     let
---         (Tagged_WhiteUnusedDiskCount w') = decreaseByOne $ Tagged_WhiteUnusedDiskCount w
---     in
---         GameState b w' board
-
-
--- playMove :: Move -> GameState -> GameState
--- playMove move g@(GameState _ _ board) =
---     -- NEED TO DEAL WITH DISKCOUNT FIRST< TO SEE IF DEPLETED AND RULE 9
---     let
---         board' = applyMove move board
---     in
---         case _color move of 
---             Black -> blackMoved board' g
---             White -> whiteMoved board' g
-         
+     
 
 gameState_DisplayString :: GameState -> String
 gameState_DisplayString (GameState _ _ b w board) =

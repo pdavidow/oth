@@ -42,5 +42,5 @@ flipDisk (Disk initColor_dontTouch flipCount) =
 iconChar :: Color -> Char
 iconChar color =
     case color of
-        Black -> 'x'
-        White -> 'o'
+        Black -> 'X' -- 'x'
+        White -> 'O' -- 'o'
