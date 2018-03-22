@@ -8,12 +8,12 @@ module Board
     , validMoves
     , moveChoices
     , board_DisplayString
-
     , boardFromConfig
     , toPos
     , applyMove
     , filledPositions
-    , squaresColored
+    , boardSquaresColored
+    , numSquaresColored
     )
     where
 
@@ -25,8 +25,9 @@ import Data.Maybe ( fromMaybe, mapMaybe  )
 import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
+import qualified Data.Map.Strict as Map ( Map, empty, insert )
 
-import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )
+import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor, iconChar )  
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
 import ColumnName ( columnLegend, posNomenclature )
@@ -195,14 +196,39 @@ adjacentEmptySquares boardSquare board =
         & mapMaybe (\ pos -> toEmptySquare $ boardAt board pos)
 
 
-squaresColored :: Color -> Board -> [FilledSquare]
-squaresColored color board =
-    filter (\ x -> isSquareColored color x) $ filledSquares board
+boardSquaresColored :: Color -> Board -> [FilledSquare]
+boardSquaresColored color board =
+    squaresColored color $ filledSquares board
 
+
+squaresColored :: Color -> [FilledSquare] -> [FilledSquare]
+squaresColored color xs =
+    filter (\ x -> isSquareColored color x) xs
+
+
+numColor :: Color -> [FilledSquare] -> Int
+numColor color xs =
+    xs
+        & squaresColored color
+        & length
+
+
+numSquaresColored :: Board -> Map.Map Color Int
+numSquaresColored board =
+    let
+        xs = filledSquares board
+
+        f :: Color -> Map.Map Color Int -> Map.Map Color Int
+        f = \ color m -> Map.insert color (numColor color xs) m
+    in
+        Map.empty   
+            & f Black
+            & f White 
+            
 
 filledPositions :: Color -> Board -> [Position]
 filledPositions color board = 
-    squaresColored color board
+    boardSquaresColored color board
         & map (\ x -> toPos $ Board_FilledSquare x)
 
 
@@ -223,7 +249,7 @@ validMove color emptySquare board =
 
 validMoves :: Color -> Board -> [Move]
 validMoves color board =
-      squaresColored (toggleColor color) board
+      boardSquaresColored (toggleColor color) board
         & concatMap (\ filledSquare -> adjacentEmptySquares (Board_FilledSquare filledSquare) board)
         & nub 
         & mapMaybe (\ emptySquare -> validMove color emptySquare board) 
@@ -264,10 +290,7 @@ boardSquare_DisplayString boardSquare =
             string = 
                 case boardSquare of
                     Board_EmptySquare _ -> "-"
-                    Board_FilledSquare (FilledSquare disk _)  ->
-                        case diskColor disk of
-                            Black -> "x"
-                            White -> "o"
+                    Board_FilledSquare (FilledSquare disk _)  -> [iconChar $ diskColor disk]
         in
             " " ++ string ++ " "    
 
@@ -275,7 +298,7 @@ boardSquare_DisplayString boardSquare =
 board_DisplayString :: Board -> String
 board_DisplayString (Board board) =
     let
-        header = "   " ++ columnLegend ++ "\n" 
+        header = "   " ++ columnLegend ++ "\n"
 
         f = \ i -> 
             [show i ++ " "] 
