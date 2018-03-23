@@ -8,11 +8,11 @@ module Board
     , validMoves
     , movePosChoices
     , movePosChoicesNomenclature
-    , board_DisplayString
-    , boardWithValidMoves_DisplayString
+    , boardDisplay
+    , boardWithValidMovesDisplay
     , boardFromConfig
     , toPos
-    , applyMove
+    , applyBoardMove
     , filledPositions
     , boardSquaresColored
     , numSquaresColored
@@ -275,8 +275,8 @@ movePosChoicesNomenclature xs =
         & concatMap (\ ((i, pos)) -> show i ++ ":" ++ posNomenclature pos ++ " ") 
 
 
-applyMove :: Move -> Board -> Board
-applyMove move board =
+applyBoardMove :: Move -> Board -> Board
+applyBoardMove move board =
     let
         disk = makeDisk $ _color move
         boardSquare = Board_EmptySquare $ _square move
@@ -307,8 +307,8 @@ boardSquare_DisplayString mbF boardSquare =
             " " ++ string ++ " "    
 
 
-boardWithCustomEmptySquare_DisplayString :: Maybe (Position -> String) -> Board -> String
-boardWithCustomEmptySquare_DisplayString mbF (Board board) =
+boardWithCustomEmptySquareDisplay :: Maybe (Position -> String) -> Board -> String
+boardWithCustomEmptySquareDisplay mbF (Board board) =
     let
         header = "   " ++ columnLegend ++ "\n"
 
@@ -322,20 +322,21 @@ boardWithCustomEmptySquare_DisplayString mbF (Board board) =
         header ++ boardString 
 
 
-board_DisplayString :: Board -> String
-board_DisplayString b =
-    boardWithCustomEmptySquare_DisplayString Nothing b
+boardDisplay :: Board -> String
+boardDisplay b =
+    boardWithCustomEmptySquareDisplay Nothing b
 
 
-boardWithValidMoves_DisplayString :: [(Int, Position)] -> Board -> String
-boardWithValidMoves_DisplayString xs b =
+boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
+boardWithValidMovesDisplay xs b =
     let
+        f :: Position -> String
         f = \ pos -> 
             case find (\ ((_, pos')) -> pos == pos') xs of
                 Just (moveN, _) -> show moveN
                 Nothing -> defaultEmptySquareString
     in
-        boardWithCustomEmptySquare_DisplayString (Just f) b
+        boardWithCustomEmptySquareDisplay (Just f) b
 
 
 defaultEmptySquareString :: String

@@ -1,15 +1,24 @@
 module GameState
     ( GameState(..)
-    , makeStartLifecycleGameState
-    )
+    , PlayGameState(..)
+    , EndGameState(..)
+    , All_State(..)
+    , makePlayGameState
+    , nextToMove
+    , possibleMoves
+    , blackAndWhiteUnusedDiskCounts
+    , applyMove
+    , gameStateDisplay
+    )  
     where
  
 import qualified Data.Map.Strict as Map ( (!) )
 
 import Disk ( Color(..), toggleColor, iconChar )
-import Board ( Board, Move(..), applyMove, initialBoard, numSquaresColored, validMoves, board_DisplayString ) 
+import Board ( Board, Move(..), applyBoardMove, initialBoard, numSquaresColored, validMoves, boardDisplay, boardWithValidMovesDisplay ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, decreaseByOne, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
+import Position ( Position )
 
 data GameState = GameState NextToMove PossibleMoves BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
 
@@ -17,29 +26,54 @@ newtype NextToMove = NextToMove Color deriving (Eq, Show)
 
 newtype PossibleMoves = PossibleMoves [Move] deriving (Eq, Show)
 
-newtype StartLifecycleGameState = StartLifecycleGameState GameState deriving (Eq, Show)
+newtype PlayGameState = PlayGameState GameState deriving (Eq, Show)
 
-newtype MidLifecycleGameState   = MidLifecycleGameState GameState deriving (Eq, Show)
+data EndGameState = EndGameState EndReason GameState deriving (Eq, Show)
 
-data EndLifecycleGameState   = EndLifecycleGameState EndReason GameState deriving (Eq, Show)
+data All_State
+    = PlayState PlayGameState
+    | EndState  EndGameState
+        deriving (Eq, Show)
 
+data GameSummary = GameSummary EndReason BlackSquareCount WhiteSquareCount deriving (Eq, Show)
+        
 data EndReason
     = NoUnusedDisksForBoth
     | NoValidMoves
         deriving (Eq, Show)
 
-data GameSummary = GameSummary EndReason BlackSquareCount WhiteSquareCount deriving (Eq, Show)
-
-data All_LifecycleGameState
-    = StartLifecycle StartLifecycleGameState
-    | MidLifecycle   MidLifecycleGameState
-    | EndLifecycle   EndLifecycleGameState
-        deriving (Eq, Show)
-
 data Winner
     = WinnerColor Color
-    | Tie -- (is this theoretically possible?)
+    | Tie
         deriving (Eq, Show)
+
+
+blackAndWhiteUnusedDiskCounts :: All_State -> (Int, Int)
+blackAndWhiteUnusedDiskCounts tagged =
+    let
+        (b, w) = 
+            case tagged of
+                PlayState (PlayGameState (GameState _ _ b w _)) -> (b, w)
+                EndState (EndGameState _ (GameState _ _ b w _)) -> (b, w)
+
+        bn = UnusedDiskCount.countFrom $ BlackUnused b
+        wn = UnusedDiskCount.countFrom $ WhiteUnused w
+    in
+        (bn, wn)
+
+
+nextToMove :: All_State -> Color
+nextToMove tagged =
+    case tagged of
+        PlayState (PlayGameState (GameState (NextToMove c) _ _ _ _)) -> c
+        EndState (EndGameState _ (GameState (NextToMove c) _ _ _ _)) -> c -- in theory
+
+
+possibleMoves :: All_State -> [Move]
+possibleMoves tagged =
+    case tagged of
+        PlayState (PlayGameState (GameState _ (PossibleMoves m) _ _ _)) -> m
+        EndState (EndGameState _ (GameState _ (PossibleMoves m) _ _ _)) -> m
 
 
 initialNextToMove :: NextToMove
@@ -47,25 +81,21 @@ initialNextToMove =
     NextToMove Black
 
 
-makeStartLifecycleGameState :: StartLifecycleGameState
-makeStartLifecycleGameState =
+makePlayGameState :: PlayGameState
+makePlayGameState =
     let
-        nextToMove = initialNextToMove
-        (NextToMove color) = nextToMove
+        next = initialNextToMove
+        (NextToMove color) = next
         board = initialBoard
         moves = PossibleMoves $ validMoves color board
     in
-        StartLifecycleGameState $ 
+        PlayGameState $ 
             GameState 
-                nextToMove
+                next
                 moves
                 initialBlackUnusedDiskCount 
                 initialWhiteUnusedDiskCount 
                 board
-
-
--- startLifecycle :: StartLifecycleGameState -> MidLifecycleGameState
--- startLifecycle (StartLifecycleGameState ((NextToMove Color) bCount wCount board)) =
   
 
 isZeroUnusedDiskCount :: Color -> GameState -> Bool
@@ -75,26 +105,35 @@ isZeroUnusedDiskCount color (GameState _ _ b w _) =
         White -> isZeroCount $ WhiteUnused w
 
 
-isZeroUnusedDiskCount_Tagged :: Color -> All_LifecycleGameState -> Bool
+isZeroUnusedDiskCount_Tagged :: Color -> All_State -> Bool
 isZeroUnusedDiskCount_Tagged color tagged =
-    case tagged of
-        StartLifecycle _ -> False
-        MidLifecycle (MidLifecycleGameState g)   -> isZeroUnusedDiskCount color g
-        EndLifecycle (EndLifecycleGameState _ g) -> isZeroUnusedDiskCount color g
+    let
+        f :: GameState -> Bool
+        f = \ x -> isZeroUnusedDiskCount color x
+    in
+        case tagged of
+            PlayState (PlayGameState x) -> f x
+            EndState (EndGameState _ x) -> f x
 
 
-continueLifecycle :: MidLifecycleGameState -> EndLifecycleGameState
-continueLifecycle mg@(MidLifecycleGameState g@(GameState n@(NextToMove color) p@(PossibleMoves moves) bCount wCount board)) =
+applyMove :: Move -> PlayGameState -> All_State
+applyMove move (PlayGameState (GameState n m b w board)) =
+    analyzeState $ PlayGameState $ GameState n m b w board'
+        where board' = applyBoardMove move board
+
+
+analyzeState :: PlayGameState -> All_State
+analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves moves) bCount wCount board)) =
     let
         oppColor = toggleColor color
 
-        isZeroUnused = isZeroUnusedDiskCount_Tagged color $ MidLifecycle mg
-        isZeroUnusedOpp = isZeroUnusedDiskCount_Tagged oppColor $ MidLifecycle mg
+        isZeroUnused = isZeroUnusedDiskCount_Tagged color $ PlayState p
+        isZeroUnusedOpp = isZeroUnusedDiskCount_Tagged oppColor $ PlayState p
 
-        end_NoUnusedDisksForBoth = EndLifecycleGameState NoUnusedDisksForBoth g
-        end_NoValidMoves = EndLifecycleGameState NoValidMoves g
-        continue_Opp = \ b w someBoard -> continueLifecycle $ MidLifecycleGameState $ GameState (NextToMove oppColor) (PossibleMoves $ validMoves oppColor someBoard) b w someBoard
-        continue_Same = \ b w -> continueLifecycle $ MidLifecycleGameState $ GameState n p b w board 
+        end_NoUnusedDisksForBoth = EndState $ EndGameState NoUnusedDisksForBoth g
+        end_NoValidMoves = EndState $ EndGameState NoValidMoves g
+        continue_Opp  = \ b w -> PlayState $ PlayGameState $ GameState (NextToMove oppColor) (PossibleMoves $ validMoves oppColor board) b w board
+        continue_Same = \ b w -> PlayState $ PlayGameState $ GameState n v b w board 
     in
         if isZeroUnused then
             if isZeroUnusedOpp then -- Rule 10: When it is no longer possible for either player to move, the game is over.
@@ -116,10 +155,7 @@ continueLifecycle mg@(MidLifecycleGameState g@(GameState n@(NextToMove color) p@
                 (BlackUnused bCount') = m Map.! Black
                 (WhiteUnused wCount') = m Map.! White
             in
-                --  somehow make move which gives board' ---------------------------------------------------------------
-                end_NoUnusedDisksForBoth -- temp ========================================
-                
-                --continue_Opp bCount' wCount' board'
+                continue_Opp bCount' wCount'
 
 
 winner :: GameSummary -> Winner
@@ -137,8 +173,8 @@ winner (GameSummary _ b w) =
             Tie
 
 
-gameSummary :: EndLifecycleGameState -> GameSummary
-gameSummary (EndLifecycleGameState reason (GameState _ _ _ _ board)) =
+gameSummary :: EndGameState -> GameSummary
+gameSummary (EndGameState reason (GameState _ _ _ _ board)) =
     let
         m = numSquaresColored board
 
@@ -148,18 +184,28 @@ gameSummary (EndLifecycleGameState reason (GameState _ _ _ _ board)) =
         GameSummary reason b  w
      
 
-gameState_DisplayString :: GameState -> String
-gameState_DisplayString (GameState _ _ b w board) =
+gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
+gameStateDisplay mbShowMoves tagged =
     let
+        (b, w, board) = 
+            case tagged of
+                PlayState (PlayGameState (GameState _ _ b w board)) -> (b, w, board)
+                EndState (EndGameState _ (GameState _ _ b w board)) -> (b, w, board)
+
         blackUnusedCount = UnusedDiskCount.countFrom $ BlackUnused b
         whiteUnusedCount = UnusedDiskCount.countFrom $ WhiteUnused w
 
         blackUnused = "Black: " ++ (replicate blackUnusedCount $ iconChar Black)
-        whiteUnused = "White: " ++ (replicate blackUnusedCount $ iconChar White)
+        whiteUnused = "White: " ++ (replicate whiteUnusedCount $ iconChar White)
 
-        header = 
+        footer = 
+            "Available Disks" ++ "\n" ++
             blackUnused ++ "\n" ++
-            whiteUnused ++ "\n" ++
-            "\n" 
+            whiteUnused
+
+        boardString = 
+            case mbShowMoves of
+                Just xs -> boardWithValidMovesDisplay xs board
+                Nothing -> boardDisplay board
     in
-        header ++ board_DisplayString board
+        boardString ++ "\n" ++ footer     

@@ -7,9 +7,10 @@ import Test.Tasty.HUnit
 
 import Data.Function ( (&) )
 
-import Board ( EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), initialBoard, validMoves, board_DisplayString, boardFromConfig, toPos, applyMove, filledPositions, boardWithValidMoves_DisplayString, movePosChoices)
+import Board ( EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), initialBoard, validMoves, boardDisplay, boardFromConfig, toPos, applyBoardMove, filledPositions, boardWithValidMovesDisplay, movePosChoices)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..) )
+import GameState ( All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, blackAndWhiteUnusedDiskCounts )
 
 main = defaultMain tests
 
@@ -52,14 +53,14 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-          board_DisplayString initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
+        boardDisplay initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
           
 
         , testCase "boardWithValidMoves_DisplayString" $
           let
               board = initialBoard
           in
-              boardWithValidMoves_DisplayString (movePosChoices $ validMoves Black board) board @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
+            boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
 
         , testGroup "validMoves Black initialBoard" $
             let
@@ -194,7 +195,7 @@ unitTests = testGroup "Unit tests" $
                   boardBefore = board_Figure2
                   moves = validMoves White boardBefore
                   move0 = moves !! 0
-                  boardAfter = applyMove move0 boardBefore
+                  boardAfter = applyBoardMove move0 boardBefore
                 in
                     [ testCase "white positions" $ 
                       filledPositions White boardAfter @?= [(3,3), (3,7), (4,2), (5,3), (6,4), (7,5)]
@@ -208,7 +209,7 @@ unitTests = testGroup "Unit tests" $
                     boardBefore = board_Figure2
                     moves = validMoves White boardBefore
                     move1 = moves !! 1
-                    boardAfter = applyMove move1 boardBefore
+                    boardAfter = applyBoardMove move1 boardBefore
                 in
                     [ testCase "white positions" $ 
                       filledPositions White boardAfter @?= [(3,3), (3,7), (4,3), (4,6), (5,3), (5,5), (6,3), (6,4), (7,3), (7,4), (7,5)]
@@ -218,5 +219,55 @@ unitTests = testGroup "Unit tests" $
                     ]    
               ]
           ]
+    , testGroup "module GameState" $ 
+        let
+          playGameState1 = makePlayGameState
+          tagged1 = PlayState playGameState1
+          moves1 = possibleMoves tagged1
+
+          tagged2 = applyMove (head moves1) playGameState1
+          moves2 = possibleMoves tagged2
+          (PlayState playGameState2) = tagged2
+
+          tagged3 = applyMove (head moves2) playGameState2
+
+          numberedMovesWithPos1 = movePosChoices moves1
+          numberedMovesWithPos2 = movePosChoices moves2
+
+          display1 = gameStateDisplay Nothing tagged1
+          display2 = gameStateDisplay (Just numberedMovesWithPos1) tagged1
+          display3 = gameStateDisplay Nothing tagged2
+          display4 = gameStateDisplay (Just numberedMovesWithPos2) tagged2
+
+          (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
+          (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
+          (b3, w3) = blackAndWhiteUnusedDiskCounts tagged3
+
+          (c1, c2, c3) = (nextToMove tagged1, nextToMove tagged2, nextToMove tagged3)
+        in
+            [ testCase "initial: gameStateDisplay Nothing" $ 
+              display1 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
+              
+            , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
+              display2 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
+
+            , testCase "After move C4: gameStateDisplay Nothing" $ 
+              display3 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  
+ 
+            , testCase "After move C4: gameStateDisplay (Just numberedMovesWithPos)" $ 
+              display4 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  1  .  3  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  2  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+
+            , testCase "initial unused disk counts" $ 
+              (b1, w1) @?= (32, 32) 
+
+            , testCase "unused disk counts after 1st move (Black)" $ 
+              (b2, w2) @?= (31, 32)   
+
+            , testCase "unused disk counts after 2nd move (White)" $ 
+              (b3, w3) @?= (31, 31)  
+
+            , testCase "nextToMove for first 3 moves" $ 
+              (c1, c2, c3) @?= (Black, White, Black)                  
+            ]  
     ]
 
