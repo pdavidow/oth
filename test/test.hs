@@ -7,10 +7,12 @@ import Test.Tasty.HUnit
 
 import Data.Function ( (&) )
 
-import Board ( EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), initialBoard, validMoves, boardDisplay, boardFromConfig, toPos, applyBoardMove, filledPositions, boardWithValidMovesDisplay, movePosChoices)
+import Board ( Board, EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardDisplay, boardFromConfig, toPos, applyBoardMove, filledPositions, boardWithValidMovesDisplay, movePosChoices)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..) )
-import GameState ( All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, blackAndWhiteUnusedDiskCounts )
+import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, blackAndWhiteUnusedDiskCounts, gameState )
+import UnusedDiskCount ( All_UnusedDiskCount(..), countFrom, decreaseByOne )
+import BoardSize ( boardSize )
 
 main = defaultMain tests
 
@@ -26,6 +28,7 @@ filledRowToPosRow (FilledRow xs) =
       & map (\ x -> toPos $ Board_FilledSquare x)
 
 
+board_Figure2 :: Board 
 board_Figure2 =
     boardFromConfig -- page 2: http://www.boardgamecapital.com/game_rules/othello.pdf
         [ (White,(3,3)), (White,(3,7)), (White,(7,5)),
@@ -53,14 +56,14 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-        boardDisplay initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
+          boardDisplay initialBoard @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
           
 
         , testCase "boardWithValidMoves_DisplayString" $
-          let
-              board = initialBoard
-          in
-            boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
+            let
+                board = initialBoard
+            in
+              boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n"
 
         , testGroup "validMoves Black initialBoard" $
             let
@@ -221,53 +224,117 @@ unitTests = testGroup "Unit tests" $
           ]
     , testGroup "module GameState" $ 
         let
-          playGameState1 = makePlayGameState
-          tagged1 = PlayState playGameState1
-          moves1 = possibleMoves tagged1
+            playGameState1 = makePlayGameState
+            tagged1 = PlayState playGameState1
+            moves1 = possibleMoves tagged1
 
-          tagged2 = applyMove (head moves1) playGameState1
-          moves2 = possibleMoves tagged2
-          (PlayState playGameState2) = tagged2
+            tagged2 = applyMove (head moves1) playGameState1
+            moves2 = possibleMoves tagged2
+            (PlayState playGameState2) = tagged2
 
-          tagged3 = applyMove (head moves2) playGameState2
+            tagged3 = applyMove (head moves2) playGameState2
 
-          numberedMovesWithPos1 = movePosChoices moves1
-          numberedMovesWithPos2 = movePosChoices moves2
+            numberedMovesWithPos1 = movePosChoices moves1
+            numberedMovesWithPos2 = movePosChoices moves2
 
-          display1 = gameStateDisplay Nothing tagged1
-          display2 = gameStateDisplay (Just numberedMovesWithPos1) tagged1
-          display3 = gameStateDisplay Nothing tagged2
-          display4 = gameStateDisplay (Just numberedMovesWithPos2) tagged2
+            display1 = gameStateDisplay Nothing tagged1
+            display2 = gameStateDisplay (Just numberedMovesWithPos1) tagged1
+            display3 = gameStateDisplay Nothing tagged2
+            display4 = gameStateDisplay (Just numberedMovesWithPos2) tagged2
 
-          (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
-          (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
-          (b3, w3) = blackAndWhiteUnusedDiskCounts tagged3
+            (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
+            (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
+            (b3, w3) = blackAndWhiteUnusedDiskCounts tagged3
 
-          (c1, c2, c3) = (nextToMove tagged1, nextToMove tagged2, nextToMove tagged3)
-        in
-            [ testCase "initial: gameStateDisplay Nothing" $ 
-              display1 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
-              
-            , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
-              display2 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
+            (c1, c2, c3) = (nextToMove tagged1, nextToMove tagged2, nextToMove tagged3)
+          in
+              [ testCase "initial: gameStateDisplay Nothing" $ 
+                display1 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  .  O  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
+                
+              , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
+                display2 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  2  .  .  .  . \n4  .  .  1  O  X  .  .  . \n5  .  .  .  X  O  4  .  . \n6  .  .  .  .  3  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"   
 
-            , testCase "After move C4: gameStateDisplay Nothing" $ 
-              display3 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  
- 
-            , testCase "After move C4: gameStateDisplay (Just numberedMovesWithPos)" $ 
-              display4 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  1  .  3  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  2  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
+              , testCase "After move C4: gameStateDisplay Nothing" $ 
+                display3 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  .  .  .  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  .  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"  
+  
+              , testCase "After move C4: gameStateDisplay (Just numberedMovesWithPos)" $ 
+                display4 @?= "   A  B  C  D  E  F  G  H  \n1  .  .  .  .  .  .  .  . \n2  .  .  .  .  .  .  .  . \n3  .  .  1  .  3  .  .  . \n4  .  .  X  X  X  .  .  . \n5  .  .  2  X  O  .  .  . \n6  .  .  .  .  .  .  .  . \n7  .  .  .  .  .  .  .  . \n8  .  .  .  .  .  .  .  . \n\nAvailable Disks\nBlack: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\nWhite: OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO"
 
-            , testCase "initial unused disk counts" $ 
-              (b1, w1) @?= (32, 32) 
+              , testCase "initial unused disk counts" $ 
+                (b1, w1) @?= (32, 32) 
 
-            , testCase "unused disk counts after 1st move (Black)" $ 
-              (b2, w2) @?= (31, 32)   
+              , testCase "unused disk counts after 1st move (Black)" $ 
+                (b2, w2) @?= (31, 32)   
 
-            , testCase "unused disk counts after 2nd move (White)" $ 
-              (b3, w3) @?= (31, 31)  
+              , testCase "unused disk counts after 2nd move (White)" $ 
+                (b3, w3) @?= (31, 31)  
 
-            , testCase "nextToMove for first 3 moves" $ 
-              (c1, c2, c3) @?= (Black, White, Black)                  
-            ]  
+              , testCase "nextToMove for first 3 moves" $ 
+                (c1, c2, c3) @?= (Black, White, Black)                   
+              , testGroup "Black uses very last disk on first move (contrived)" $
+                  let
+                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+
+                      taggedB = BlackUnused b
+                      cB = countFrom taggedB
+                      (BlackUnused b') = iterate decreaseByOne taggedB !! (cB - 1) 
+
+                      taggedW = WhiteUnused w
+                      cW = countFrom taggedW
+                      (WhiteUnused w') = iterate decreaseByOne taggedW !! cW 
+
+                      playGameState1 = PlayGameState $ (GameState n m b' w' board)
+                      tagged1 = PlayState playGameState1
+                      moves1 = possibleMoves tagged1
+
+                      tagged2 = applyMove (head moves1) playGameState1
+                      g = gameState tagged2
+                  in
+                      [ testCase "first move results in: EndGameState NoUnusedDisksForBot" $ 
+                        tagged2 @?= (EndState $ EndGameState NoUnusedDisksForBoth g)
+                      ]
+              , testGroup "Black on first move is confronted with full board (contrived)" $
+                  let
+                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+
+                      board'= boardFromConfig [ (White,(i,j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+
+                      playGameState1 = PlayGameState $ (GameState n m b w board')
+                      tagged1 = PlayState playGameState1
+                      move = Move Black (head $ emptySquares board') []
+
+                      tagged2 = applyMove move playGameState1
+                      g = gameState tagged2
+                  in
+                      [ testCase "first move results in: EndGameState NoValidMoves" $ 
+                        tagged2 @?= (EndState $ EndGameState NoValidMoves g)
+                      ]
+              , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
+                  let
+                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+
+                      taggedW = WhiteUnused w
+                      cW = countFrom taggedW
+                      (WhiteUnused w') = iterate decreaseByOne taggedW !! cW 
+
+                      playGameState1 = PlayGameState $ (GameState n m b w' board)
+                      tagged1 = PlayState playGameState1
+                      moves1 = possibleMoves tagged1
+
+                      tagged2 = applyMove (head moves1) playGameState1
+                      moves2 = possibleMoves tagged2
+                      (PlayState playGameState2) = tagged2
+          
+                      tagged3 = applyMove (head moves2) playGameState2
+
+                      (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
+                      (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
+                  in
+                      [ testCase "initial disk counts" $ 
+                        (b1, w1) @?= (32, 0) 
+    
+                      , testCase "Black after using disk for his first move, then transfers another to White -- prior to White's first move" $ 
+                        (b2, w2) @?= (30, 1)  
+                      ]                      
+              ]
     ]
-

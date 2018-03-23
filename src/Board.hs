@@ -16,6 +16,7 @@ module Board
     , filledPositions
     , boardSquaresColored
     , numSquaresColored
+    , emptySquares
     )
     where
 

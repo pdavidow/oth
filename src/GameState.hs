@@ -3,12 +3,14 @@ module GameState
     , PlayGameState(..)
     , EndGameState(..)
     , All_State(..)
+    , EndReason(..)
     , makePlayGameState
     , nextToMove
     , possibleMoves
     , blackAndWhiteUnusedDiskCounts
     , applyMove
     , gameStateDisplay
+    , gameState
     )  
     where
  
@@ -75,6 +77,13 @@ possibleMoves tagged =
         EndState (EndGameState _ (GameState _ (PossibleMoves m) _ _ _)) -> m
 
 
+gameState :: All_State -> GameState
+gameState tagged =
+    case tagged of
+        PlayState (PlayGameState g) -> g
+        EndState (EndGameState _ g) -> g
+
+
 initialNextToMove :: NextToMove
 initialNextToMove =
     NextToMove Black
@@ -116,7 +125,7 @@ isZeroUnusedDiskCount_Tagged color tagged =
 
 
 applyMove :: Move -> PlayGameState -> All_State
-applyMove move (PlayGameState (GameState n@(NextToMove color) m b w board)) =
+applyMove move p@(PlayGameState (GameState n@(NextToMove color) m b w board)) =
     let
         board' = applyBoardMove move board
 
@@ -127,12 +136,16 @@ applyMove move (PlayGameState (GameState n@(NextToMove color) m b w board)) =
         oppColor = toggleColor color
         n' = NextToMove oppColor
         m' = PossibleMoves $ validMoves oppColor board'
+
+        p' = PlayGameState $ GameState n' m' b' w' board'
     in
-        analyzeState $ PlayGameState $ GameState n' m' b' w' board'
+        analyzeState p'
 
 
 analyzeState :: PlayGameState -> All_State
 analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves moves) bCount wCount board)) =
+    -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
+    -- Rule 10: When it is no longer possible for either player to move, the game is over.
     let
         oppColor = toggleColor color
 
@@ -144,10 +157,12 @@ analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves
         playWithTransferredDisk = \ b w -> PlayState $ PlayGameState $ GameState n v b w board 
         play = PlayState p
     in
-        if isZeroUnused then
-            if isZeroUnusedOpp then -- Rule 10: When it is no longer possible for either player to move, the game is over.
+        if null moves then 
+            end_NoValidMoves
+        else if isZeroUnused then
+            if isZeroUnusedOpp then 
                 end_NoUnusedDisksForBoth
-            else if length moves > 0 then -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
+            else 
                 let
                     mahp = transferDiskTo color bCount wCount
 
@@ -155,8 +170,6 @@ analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves
                     (WhiteUnused wCount') = mahp Map.! White
                 in
                     playWithTransferredDisk bCount' wCount'
-            else
-                end_NoValidMoves
         else
             play
 
