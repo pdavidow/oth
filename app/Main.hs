@@ -74,7 +74,7 @@ getValidMoveChoice prompt validChoices = do
         Nothing -> do
             again same
 
-
+{- 
 getIsHighlightMove :: IO Bool
 getIsHighlightMove = do
     let same = getIsHighlightMove
@@ -99,3 +99,4 @@ getIsHighlightMove = do
                 again same
         Nothing -> do
             again same 
+-}

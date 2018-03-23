@@ -55,11 +55,10 @@ blackAndWhiteUnusedDiskCounts tagged =
             case tagged of
                 PlayState (PlayGameState (GameState _ _ b w _)) -> (b, w)
                 EndState (EndGameState _ (GameState _ _ b w _)) -> (b, w)
-
-        bn = UnusedDiskCount.countFrom $ BlackUnused b
-        wn = UnusedDiskCount.countFrom $ WhiteUnused w
     in
-        (bn, wn)
+        ( UnusedDiskCount.countFrom $ BlackUnused b
+        , UnusedDiskCount.countFrom $ WhiteUnused w
+        )
 
 
 nextToMove :: All_State -> Color
@@ -117,9 +116,19 @@ isZeroUnusedDiskCount_Tagged color tagged =
 
 
 applyMove :: Move -> PlayGameState -> All_State
-applyMove move (PlayGameState (GameState n m b w board)) =
-    analyzeState $ PlayGameState $ GameState n m b w board'
-        where board' = applyBoardMove move board
+applyMove move (PlayGameState (GameState n@(NextToMove color) m b w board)) =
+    let
+        board' = applyBoardMove move board
+
+        mahp = decreaseByOneFor color b w -- for only one of them, whichever it is
+        (BlackUnused b') = mahp Map.! Black
+        (WhiteUnused w') = mahp Map.! White
+
+        oppColor = toggleColor color
+        n' = NextToMove oppColor
+        m' = PossibleMoves $ validMoves oppColor board'
+    in
+        analyzeState $ PlayGameState $ GameState n' m' b' w' board'
 
 
 analyzeState :: PlayGameState -> All_State
@@ -132,30 +141,24 @@ analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves
 
         end_NoUnusedDisksForBoth = EndState $ EndGameState NoUnusedDisksForBoth g
         end_NoValidMoves = EndState $ EndGameState NoValidMoves g
-        continue_Opp  = \ b w -> PlayState $ PlayGameState $ GameState (NextToMove oppColor) (PossibleMoves $ validMoves oppColor board) b w board
-        continue_Same = \ b w -> PlayState $ PlayGameState $ GameState n v b w board 
+        playWithTransferredDisk = \ b w -> PlayState $ PlayGameState $ GameState n v b w board 
+        play = PlayState p
     in
         if isZeroUnused then
             if isZeroUnusedOpp then -- Rule 10: When it is no longer possible for either player to move, the game is over.
                 end_NoUnusedDisksForBoth
             else if length moves > 0 then -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
                 let
-                    m = transferDiskTo color bCount wCount
+                    mahp = transferDiskTo color bCount wCount
 
-                    (BlackUnused bCount') = m Map.! Black
-                    (WhiteUnused wCount') = m Map.! White
+                    (BlackUnused bCount') = mahp Map.! Black
+                    (WhiteUnused wCount') = mahp Map.! White
                 in
-                    continue_Same bCount' wCount'
+                    playWithTransferredDisk bCount' wCount'
             else
                 end_NoValidMoves
         else
-            let
-                m = decreaseByOneFor color bCount wCount
-
-                (BlackUnused bCount') = m Map.! Black
-                (WhiteUnused wCount') = m Map.! White
-            in
-                continue_Opp bCount' wCount'
+            play
 
 
 winner :: GameSummary -> Winner
