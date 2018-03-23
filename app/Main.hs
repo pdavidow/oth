@@ -3,41 +3,45 @@ module Main where
 import Text.Read
 
 import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner )
-import Board ( movePosChoices, movePosChoicesNomenclature )
+import Board ( Move, movePosChoices, movePosChoicesNomenclature )
 import Disk ( Color(..) )
 import Position ( Position )
  
 
 main :: IO ()
 main = do   
-    play True makePlayGameState 
+    play makePlayGameState 
  
 
-play :: Bool -> PlayGameState -> IO ()
-play isDisplay playGameState = do
+play :: PlayGameState -> IO ()
+play playGameState = do
     let taggedState = PlayState playGameState
     let playerColor = nextToMove taggedState
     let moves = possibleMoves taggedState
     let numberedMovesWithPos = movePosChoices moves
       
-    putStrLn (if isDisplay then gameStateDisplay Nothing $ PlayState playGameState else "")
+    putStrLn $ gameStateDisplay Nothing $ PlayState playGameState
+    handleChoice playerColor numberedMovesWithPos moves playGameState 
 
+
+handleChoice :: Color -> [(Int, Position)] -> [Move] -> PlayGameState -> IO ()
+handleChoice playerColor numberedMovesWithPos moves playGameState  = do
     n <- getMoveChoice playerColor numberedMovesWithPos
 
     if n == choiceNumberFor_Resign then do
         return ()
     else if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
-        play False playGameState -- todo wasteful to recompute, make another f
+        handleChoice playerColor numberedMovesWithPos moves playGameState 
     else do
-        let taggedState2 = applyMove (moves !! (n-1)) playGameState
+        let taggedState = applyMove (moves !! (n-1)) playGameState
 
-        case taggedState2 of 
+        case taggedState of 
             PlayState x -> 
-                play True x
+                play x
 
             EndState x -> do
-                putStrLn $ gameStateDisplay Nothing taggedState2
+                putStrLn $ gameStateDisplay Nothing taggedState
                 putStrLn ""
                 putStrLn $ "GAME OVER! " ++ show (winner $ gameSummary x)
                 putStrLn $ show $ gameSummary x
