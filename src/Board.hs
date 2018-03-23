@@ -293,34 +293,43 @@ applyBoardMove move board =
             & flipOutflanks
 
 
-boardSquare_DisplayString :: Maybe (Position -> String) -> BoardSquare -> String
-boardSquare_DisplayString mbF boardSquare =
+boardSquare_Display :: Maybe (Position -> String) -> BoardSquare -> String
+boardSquare_Display mbF boardSquare =
         let 
-            emptySquareString = case mbF of
-                Just f -> f $ toPos boardSquare
-                Nothing -> defaultEmptySquareString
+            -- Assumptions 
+                -- Square width is 5 chars
+                -- Display contents are either of length 1 or 2
 
-            string = 
-                case boardSquare of
-                    Board_EmptySquare _ -> emptySquareString 
-                    Board_FilledSquare (FilledSquare disk _) -> [iconChar $ diskColor disk]
+            padded :: String -> String
+            padded s = 
+                case length s of
+                    1 -> "  " ++ s ++ "  "
+                    2 ->  " " ++ s ++ "  "
+                    _ -> s
+
+            emptySquareString = padded $ 
+                case mbF of
+                    Just f -> f $ toPos boardSquare
+                    Nothing -> [defaultEmptySquareChar]
         in
-            " " ++ string ++ " "    
+            case boardSquare of
+                Board_EmptySquare _ -> emptySquareString 
+                Board_FilledSquare (FilledSquare disk _) -> padded [iconChar $ diskColor disk] 
 
 
 boardWithCustomEmptySquareDisplay :: Maybe (Position -> String) -> Board -> String
 boardWithCustomEmptySquareDisplay mbF (Board board) =
     let
-        header = "   " ++ columnLegend ++ "\n"
+        header = "    " ++ columnLegend
 
         f = \ i -> 
             [show i ++ " "] 
-                ++ (map (boardSquare_DisplayString mbF) $ vSlice ((i - 1) * boardSize) boardSize $ elems board) 
-                    ++ ["\n"]
+                ++ (map (boardSquare_Display mbF) $ vSlice ((i - 1) * boardSize) boardSize $ elems board) 
+                    ++ ["\n\n"]
 
         boardString = concat $ concat $ map f [1..boardSize]             
     in
-        header ++ boardString 
+        header ++ "\n" ++ boardString 
 
 
 boardDisplay :: Board -> String
@@ -335,11 +344,11 @@ boardWithValidMovesDisplay xs b =
         f = \ pos -> 
             case find (\ ((_, pos')) -> pos == pos') xs of
                 Just (moveN, _) -> show moveN
-                Nothing -> defaultEmptySquareString
+                Nothing -> [defaultEmptySquareChar]
     in
         boardWithCustomEmptySquareDisplay (Just f) b
 
 
-defaultEmptySquareString :: String
-defaultEmptySquareString = 
-    "." 
+defaultEmptySquareChar :: Char
+defaultEmptySquareChar = 
+    '.'

@@ -17,10 +17,11 @@ module GameState
     where
  
 import qualified Data.Map.Strict as Map ( (!) )
+import Data.List ( intersperse )
 
 import Disk ( Color(..), toggleColor, iconChar )
 import Board ( Board, Move(..), applyBoardMove, initialBoard, numSquaresColored, validMoves, boardDisplay, boardWithValidMovesDisplay ) 
-import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, decreaseByOne, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
+import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( Position )
 
@@ -52,31 +53,33 @@ data Winner
         deriving (Eq, Show)
 
 
-blackAndWhiteUnusedDiskCounts :: All_State -> (Int, Int)
-blackAndWhiteUnusedDiskCounts tagged =
-    let
-        (b, w) = 
-            case tagged of
-                PlayState (PlayGameState (GameState _ _ b w _)) -> (b, w)
-                EndState (EndGameState _ (GameState _ _ b w _)) -> (b, w)
-    in
-        ( UnusedDiskCount.countFrom $ BlackUnused b
-        , UnusedDiskCount.countFrom $ WhiteUnused w
-        )
-
-
 nextToMove :: All_State -> Color
 nextToMove tagged =
-    case tagged of
-        PlayState (PlayGameState (GameState (NextToMove c) _ _ _ _)) -> c
-        EndState (EndGameState _ (GameState (NextToMove c) _ _ _ _)) -> c -- in theory
+    x where ((x, _, _, _, _)) = gameStateElems tagged
 
 
 possibleMoves :: All_State -> [Move]
 possibleMoves tagged =
-    case tagged of
-        PlayState (PlayGameState (GameState _ (PossibleMoves m) _ _ _)) -> m
-        EndState (EndGameState _ (GameState _ (PossibleMoves m) _ _ _)) -> m
+    x where ((_, x, _, _, _)) = gameStateElems tagged
+
+
+blackAndWhiteUnusedDiskCounts :: All_State -> (Int, Int)
+blackAndWhiteUnusedDiskCounts tagged =
+    ( UnusedDiskCount.countFrom $ BlackUnused b
+    , UnusedDiskCount.countFrom $ WhiteUnused w
+    )
+        where ((_, _, b, w, _)) = gameStateElems tagged
+
+
+board :: All_State -> Board
+board tagged =
+    x where ((_, _, _, _, x)) = gameStateElems tagged
+
+
+gameStateElems :: All_State -> (Color, [Move], BlackUnusedDiskCount, WhiteUnusedDiskCount, Board)
+gameStateElems tagged =
+    (c, m, b, w, bd)
+        where (GameState (NextToMove c) (PossibleMoves m) b w bd) = gameState tagged
 
 
 gameState :: All_State -> GameState
@@ -96,8 +99,8 @@ makePlayGameState =
     let
         next = initialNextToMove
         (NextToMove color) = next
-        board = initialBoard
-        moves = PossibleMoves $ validMoves color board
+        bd = initialBoard
+        moves = PossibleMoves $ validMoves color bd
     in
         PlayGameState $ 
             GameState 
@@ -105,7 +108,7 @@ makePlayGameState =
                 moves
                 initialBlackUnusedDiskCount 
                 initialWhiteUnusedDiskCount 
-                board
+                bd
   
 
 isZeroUnusedDiskCount :: Color -> GameState -> Bool
@@ -127,25 +130,25 @@ isZeroUnusedDiskCount_Tagged color tagged =
 
 
 applyMove :: Move -> PlayGameState -> All_State
-applyMove move p@(PlayGameState (GameState n@(NextToMove color) m b w board)) =
+applyMove move p@(PlayGameState (GameState n@(NextToMove color) m b w bd)) =
     let
-        board' = applyBoardMove move board
+        bd' = applyBoardMove move bd
 
-        mahp = decreaseByOneFor color b w -- for only one of them, whichever it is
-        (BlackUnused b') = mahp Map.! Black
-        (WhiteUnused w') = mahp Map.! White
+        mp = decreaseByOneFor color b w -- for only one of them, whichever it is
+        (BlackUnused b') = mp Map.! Black
+        (WhiteUnused w') = mp Map.! White
 
         oppColor = toggleColor color
         n' = NextToMove oppColor
-        m' = PossibleMoves $ validMoves oppColor board'
+        m' = PossibleMoves $ validMoves oppColor bd'
 
-        p' = PlayGameState $ GameState n' m' b' w' board'
+        p' = PlayGameState $ GameState n' m' b' w' bd'
     in
         analyzeState p'
 
 
 analyzeState :: PlayGameState -> All_State
-analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves moves) bCount wCount board)) =
+analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves moves) bCount wCount bd)) =
     -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
     -- Rule 10: When it is no longer possible for either player to move, the game is over.
     let
@@ -156,7 +159,7 @@ analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves
 
         end_NoUnusedDisksForBoth = EndState $ EndGameState NoUnusedDisksForBoth g
         end_NoValidMoves = EndState $ EndGameState NoValidMoves g
-        playWithTransferredDisk = \ b w -> PlayState $ PlayGameState $ GameState n v b w board 
+        playWithTransferredDisk = \ b w -> PlayState $ PlayGameState $ GameState n v b w bd 
         play = PlayState p
     in
         if null moves then 
@@ -166,10 +169,10 @@ analyzeState p@(PlayGameState g@(GameState n@(NextToMove color) v@(PossibleMoves
                 end_NoUnusedDisksForBoth
             else 
                 let
-                    mahp = transferDiskTo color bCount wCount
+                    mp = transferDiskTo color bCount wCount
 
-                    (BlackUnused bCount') = mahp Map.! Black
-                    (WhiteUnused wCount') = mahp Map.! White
+                    (BlackUnused bCount') = mp Map.! Black
+                    (WhiteUnused wCount') = mp Map.! White
                 in
                     playWithTransferredDisk bCount' wCount'
         else
@@ -192,9 +195,9 @@ winner (GameSummary _ b w) =
 
 
 gameSummary :: EndGameState -> GameSummary
-gameSummary (EndGameState reason (GameState _ _ _ _ board)) =
+gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
     let
-        m = numSquaresColored board
+        m = numSquaresColored bd
 
         b = makeBlackSquareCount $ m Map.! Black
         w = makeWhiteSquareCount $ m Map.! White
@@ -205,25 +208,21 @@ gameSummary (EndGameState reason (GameState _ _ _ _ board)) =
 gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
 gameStateDisplay mbShowMoves tagged =
     let
-        (b, w, board) = 
-            case tagged of
-                PlayState (PlayGameState (GameState _ _ b w board)) -> (b, w, board)
-                EndState (EndGameState _ (GameState _ _ b w board)) -> (b, w, board)
-
-        blackUnusedCount = UnusedDiskCount.countFrom $ BlackUnused b
-        whiteUnusedCount = UnusedDiskCount.countFrom $ WhiteUnused w
-
-        blackUnused = "Black: " ++ (replicate blackUnusedCount $ iconChar Black)
-        whiteUnused = "White: " ++ (replicate whiteUnusedCount $ iconChar White)
+        (blackUnusedCount, whiteUnusedCount) = blackAndWhiteUnusedDiskCounts tagged
+        f = \ n char -> intersperse ' '  (replicate n $ char)
+        blackUnused = "Black " ++ show blackUnusedCount ++ ": " ++ (f blackUnusedCount $ iconChar Black)        
+        whiteUnused = "White " ++ show whiteUnusedCount ++ ": " ++ (f whiteUnusedCount $ iconChar White)
 
         footer = 
             "Available Disks" ++ "\n" ++
             blackUnused ++ "\n" ++
             whiteUnused
 
+        b = board tagged
+
         boardString = 
             case mbShowMoves of
-                Just xs -> boardWithValidMovesDisplay xs board
-                Nothing -> boardDisplay board
+                Just xs -> boardWithValidMovesDisplay xs b
+                Nothing -> boardDisplay b
     in
         boardString ++ "\n" ++ footer     

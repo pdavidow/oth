@@ -3,7 +3,7 @@ module Main where
 import Text.Read
 
 import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner )
-import Board ( Move, movePosChoices, movePosChoicesNomenclature, validMoves, filledPositions, boardSquaresColored, numSquaresColored )
+import Board ( movePosChoices, movePosChoicesNomenclature )
 import Disk ( Color(..) )
 import Position ( Position )
  
@@ -15,9 +15,9 @@ main = do
 
 play :: Bool -> PlayGameState -> IO ()
 play isDisplay playGameState = do
-    let tagged = PlayState playGameState
-    let playerColor = nextToMove tagged
-    let moves = possibleMoves tagged
+    let taggedState = PlayState playGameState
+    let playerColor = nextToMove taggedState
+    let moves = possibleMoves taggedState
     let numberedMovesWithPos = movePosChoices moves
       
     putStrLn (if isDisplay then gameStateDisplay Nothing $ PlayState playGameState else "")
@@ -28,16 +28,16 @@ play isDisplay playGameState = do
         return ()
     else if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
-        play False playGameState
+        play False playGameState -- todo wasteful to recompute, make another f
     else do
-        let tagged2 = applyMove (moves !! (n-1)) playGameState
+        let taggedState2 = applyMove (moves !! (n-1)) playGameState
 
-        case tagged2 of 
+        case taggedState2 of 
             PlayState x -> 
                 play True x
 
             EndState x -> do
-                putStrLn $ gameStateDisplay Nothing tagged2
+                putStrLn $ gameStateDisplay Nothing taggedState2
                 putStrLn ""
                 putStrLn $ "GAME OVER! " ++ show (winner $ gameSummary x)
                 putStrLn $ show $ gameSummary x

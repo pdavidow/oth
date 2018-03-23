@@ -23,7 +23,7 @@ lastColumnIndex =
 
 columnLegend :: String
 columnLegend =
-    concatMap (\x -> show x ++ "  ") columnIndexRange
+    concatMap (\x -> show x ++ "    ") columnIndexRange
 
 
 columnIndexRange :: [ColumnName]
