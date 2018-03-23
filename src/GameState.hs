@@ -11,6 +11,8 @@ module GameState
     , applyMove
     , gameStateDisplay
     , gameState
+    , gameSummary
+    , winner
     )  
     where
  

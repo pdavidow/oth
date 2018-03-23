@@ -2,35 +2,25 @@ module Main where
 
 import Text.Read
 
-import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay )
+import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner )
 import Board ( Move, movePosChoices, movePosChoicesNomenclature, validMoves, filledPositions, boardSquaresColored, numSquaresColored )
 import Disk ( Color(..) )
 import Position ( Position )
  
-  
-choiceNumberFor_DisplayChoicesOnBoard :: Int
-choiceNumberFor_DisplayChoicesOnBoard = 
-    99
-
-
-choiceNumberFor_Resign :: Int
-choiceNumberFor_Resign =
-    0
-
 
 main :: IO ()
 main = do   
-    --let playerColor = Black
-    --let board = initialBoard
-    --let moves = validMoves playerColor board
+    play True makePlayGameState 
+ 
 
-    let playGameState = makePlayGameState
-    let playerColor = nextToMove $ PlayState playGameState
-    let moves = possibleMoves $ PlayState playGameState
+play :: Bool -> PlayGameState -> IO ()
+play isDisplay playGameState = do
+    let tagged = PlayState playGameState
+    let playerColor = nextToMove tagged
+    let moves = possibleMoves tagged
     let numberedMovesWithPos = movePosChoices moves
-    --isHighlightMove <- getIsHighlightMove
-    
-    putStrLn $ gameStateDisplay Nothing $ PlayState playGameState
+      
+    putStrLn (if isDisplay then gameStateDisplay Nothing $ PlayState playGameState else "")
 
     n <- getMoveChoice playerColor numberedMovesWithPos
 
@@ -38,9 +28,21 @@ main = do
         return ()
     else if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
+        play False playGameState
     else do
-        let tagged = applyMove (moves !! (n-1)) playGameState
-        putStrLn $ gameStateDisplay Nothing tagged
+        let tagged2 = applyMove (moves !! (n-1)) playGameState
+
+        case tagged2 of 
+            PlayState x -> 
+                play True x
+
+            EndState x -> do
+                putStrLn $ gameStateDisplay Nothing tagged2
+                putStrLn ""
+                putStrLn $ "GAME OVER! " ++ show (winner $ gameSummary x)
+                putStrLn $ show $ gameSummary x
+                putStrLn ""
+                return ()
 
 
 getMoveChoice :: Color -> [(Int, Position)] -> IO Int
@@ -74,29 +76,12 @@ getValidMoveChoice prompt validChoices = do
         Nothing -> do
             again same
 
-{- 
-getIsHighlightMove :: IO Bool
-getIsHighlightMove = do
-    let same = getIsHighlightMove
 
-    let
-        again :: IO Bool -> IO Bool
-        again f = do
-            putStrLn "Invalid input, try again...  "
-            f
+choiceNumberFor_DisplayChoicesOnBoard :: Int
+choiceNumberFor_DisplayChoicesOnBoard = 
+    99
 
-    putStrLn "Highlight current move? (T/F)"
-    line <- getLine
-    putStrLn line
 
-    case (readMaybe line :: Maybe String) of
-        Just s ->
-            if s == "T" then
-                return True
-            else if s == "F" then
-                return False
-            else do
-                again same
-        Nothing -> do
-            again same 
--}
+choiceNumberFor_Resign :: Int
+choiceNumberFor_Resign =
+    0
