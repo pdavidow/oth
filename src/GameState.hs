@@ -65,10 +65,7 @@ possibleMoves tagged =
 
 blackAndWhiteUnusedDiskCounts :: All_State -> (Int, Int)
 blackAndWhiteUnusedDiskCounts tagged =
-    ( UnusedDiskCount.countFrom $ BlackUnused b
-    , UnusedDiskCount.countFrom $ WhiteUnused w
-    )
-        where ((_, _, b, w, _)) = gameStateElems tagged
+    (b, w) where ((_, _, b, w, _)) = gameStateElems tagged
 
 
 board :: All_State -> Board
@@ -76,10 +73,17 @@ board tagged =
     x where ((_, _, _, _, x)) = gameStateElems tagged
 
 
-gameStateElems :: All_State -> (Color, [Move], BlackUnusedDiskCount, WhiteUnusedDiskCount, Board)
+gameStateElems :: All_State -> (Color, [Move], Int, Int, Board)
 gameStateElems tagged =
-    (c, m, b, w, bd)
-        where (GameState (NextToMove c) (PossibleMoves m) b w bd) = gameState tagged
+    let
+        (GameState (NextToMove c) (PossibleMoves m) b w bd) = gameState tagged
+    in
+        ( c
+        , m
+        , UnusedDiskCount.countFrom $ BlackUnused b
+        , UnusedDiskCount.countFrom $ WhiteUnused w
+        , bd
+        )
 
 
 gameState :: All_State -> GameState
@@ -208,21 +212,19 @@ gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
 gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
 gameStateDisplay mbShowMoves tagged =
     let
-        (blackUnusedCount, whiteUnusedCount) = blackAndWhiteUnusedDiskCounts tagged
+        (_, _, b, w, bd) = gameStateElems tagged
         f = \ n char -> intersperse ' '  (replicate n $ char)
-        blackUnused = "Black " ++ show blackUnusedCount ++ ": " ++ (f blackUnusedCount $ iconChar Black)        
-        whiteUnused = "White " ++ show whiteUnusedCount ++ ": " ++ (f whiteUnusedCount $ iconChar White)
+        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ iconChar Black)        
+        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ iconChar White)
 
         footer = 
             "Available Disks" ++ "\n" ++
             blackUnused ++ "\n" ++
             whiteUnused
 
-        b = board tagged
-
         boardString = 
             case mbShowMoves of
-                Just xs -> boardWithValidMovesDisplay xs b
-                Nothing -> boardDisplay b
+                Just xs -> boardWithValidMovesDisplay xs bd
+                Nothing -> boardDisplay bd
     in
         boardString ++ "\n" ++ footer     
