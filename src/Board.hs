@@ -1,5 +1,5 @@
 module Board
-    ( Board
+    ( Board -- hiding constructor
     , EmptySquare(..)
     , FilledSquare -- hiding constructor
     , Move(..)
@@ -8,7 +8,6 @@ module Board
     , initialBoard
     , validMoves
     , movePosChoices
-    , movePosChoicesNomenclature
     , boardFromConfig
     , toPos
     , applyBoardMove
@@ -18,26 +17,23 @@ module Board
     , emptySquares
     , diskFrom
     , filledSquares
-    , boardDisplay
-    , boardWithValidMovesDisplay
-    , boardWithFlipCountDisplay
     , boardAt
-    --,                                         flipAt -- Should NOT be exposed, but temp expose for sake of commented-out test
+    , boardRow
+    --, ################# flipAt -- Should NOT be exposed (can temp expose for sake of commented-out test)
     )
     where
 
 
 import Data.Maybe ( mapMaybe  )
-import Data.List ( find, foldl', intersperse, nub )
+import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 import qualified Data.Map.Strict as Map ( Map, empty, insert )
 
-import Disk ( Disk, Color(..), diskColor, _flipCount, flipDisk, makeDisk, toggleColor, iconChar )  
+import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
-import ColumnName ( columnLegend, posNomenclature )
-import Lib ( mapTakeWhile, vSlice ) 
+import Lib ( mapTakeWhile ) 
 
 
 data EmptySquare = EmptySquare {_pos :: Position, _radiatingPosRows :: [PosRow]}
@@ -100,6 +96,11 @@ initialBoard =
 boardAt :: Board -> Position -> BoardSquare
 boardAt (Board board) pos =
     board ! pos
+
+            
+boardRow :: Board -> [BoardSquare]
+boardRow (Board board) =
+    elems board
 
 
 place :: Disk -> BoardSquare -> Board -> Board
@@ -273,13 +274,7 @@ movePos (Move _ (EmptySquare pos _) _) =
 movePosChoices :: [Move] -> [(Int, Position)]
 movePosChoices xs =
     -- 1 based
-    zip [(1 :: Int)..] $ map movePos xs
-
-
-movePosChoicesNomenclature :: [(Int, Position)] -> String
-movePosChoicesNomenclature xs =
-    xs
-        & concatMap (\ ((i, pos)) -> show i ++ ":" ++ posNomenclature pos ++ " ") 
+    zip [(1 :: Int)..] $ map movePos xs 
 
 
 applyBoardMove :: Move -> Board -> Board
@@ -297,78 +292,3 @@ applyBoardMove move board =
         board
             & place disk boardSquare
             & flipOutflanks
-
-
-squareDisplay :: (Position -> String) -> (Disk -> String) -> BoardSquare -> String
-squareDisplay emptyF filledF square =
-    case square of
-        Board_EmptySquare _ -> emptyF $ toPos square
-        Board_FilledSquare (FilledSquare disk _) -> filledF disk
-            
-
-boardWithSquareDisplay :: (Position -> String) -> (Disk -> String) -> Board -> String
-boardWithSquareDisplay emptyF filledF (Board board) =
-    let
-        boardString = 
-            [1 .. boardSize] 
-                & map 
-                    ( \ i -> (show i ++ " ") ++ 
-                        ( (vSlice ((i - 1) * boardSize) boardSize $ elems board)
-                            & concatMap (squareDisplay emptyF filledF)
-                        )
-                    )
-                & intersperse ("\n\n")
-                & concat
-    in
-        "    " ++ columnLegend ++ "\n" ++ boardString 
-
-
-padSquareContents :: String -> String
-padSquareContents s = 
-    -- Assume: Square width is 5 chars, and contents are either of length 1 or 2
-    case length s of
-        1 -> "  " ++ s ++ "  "
-        2 ->  " " ++ s ++ "  "
-        _ -> s
-
-
-defaultEmptySquareChar :: Char
-defaultEmptySquareChar = 
-    '.'
-
-
-emptySquareContentsDisplay :: Position -> String
-emptySquareContentsDisplay _ = 
-    padSquareContents [defaultEmptySquareChar]
-
-
-filledSquareContentsDisplay :: Disk -> String
-filledSquareContentsDisplay disk = 
-    padSquareContents [iconChar $ diskColor disk]
-
-
-boardDisplay :: Board -> String
-boardDisplay b =
-    boardWithSquareDisplay emptySquareContentsDisplay filledSquareContentsDisplay b
-
-
-boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
-boardWithValidMovesDisplay xs b =
-    let
-        emptyF :: Position -> String
-        emptyF = \ pos -> padSquareContents $
-            case find (\ ((_, pos')) -> pos == pos') xs of
-                Just (moveN, _) -> show moveN
-                Nothing -> [defaultEmptySquareChar]
-    in
-        boardWithSquareDisplay emptyF filledSquareContentsDisplay b
-
-
-boardWithFlipCountDisplay :: Board -> String
-boardWithFlipCountDisplay b =
-    let
-        filledF :: Disk -> String
-        filledF disk = 
-            padSquareContents $ show $ _flipCount disk
-    in
-        boardWithSquareDisplay emptySquareContentsDisplay filledF b

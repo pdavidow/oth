@@ -3,9 +3,10 @@ module Main where
 import Text.Read
 
 import GameState ( PlayGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner, boardWithFlipCountDisplay )
-import Board ( Move, movePosChoices, movePosChoicesNomenclature )
+import Board ( Move, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
+import Display ( movePosChoicesNomenclature )
  
 
 main :: IO ()

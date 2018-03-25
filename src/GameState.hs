@@ -20,11 +20,12 @@ module GameState
 import qualified Data.Map.Strict as Map ( (!) )
 import Data.List ( intersperse )
 
-import Disk ( Color(..), toggleColor, iconChar )
-import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves, boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay ) 
+import Disk ( Color(..), toggleColor )
+import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( Position )
+import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, diskIconChar )
 
 data GameState = GameState NextToMove PossibleMoves BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
 
@@ -77,11 +78,11 @@ board tagged =
 gameStateElems :: All_State -> ( Color, [Move], Int, Int, Board )
 gameStateElems tagged =
     let
-        (GameState (NextToMove color) (PossibleMoves moves) b w board) = gameState tagged
+        (GameState (NextToMove color) (PossibleMoves moves) b w bd) = gameState tagged
         blackUnusedDiskCount = UnusedDiskCount.countFrom $ BlackUnused b
         whiteUnusedDiskCount = UnusedDiskCount.countFrom $ WhiteUnused w
     in
-        ( color, moves, blackUnusedDiskCount, whiteUnusedDiskCount, board )
+        ( color, moves, blackUnusedDiskCount, whiteUnusedDiskCount, bd )
 
 
 gameState :: All_State -> GameState
@@ -212,8 +213,8 @@ gameStateDisplay mbShowMoves tagged =
     let
         (_, _, b, w, bd) = gameStateElems tagged
         f = \ n char -> intersperse ' '  (replicate n $ char)
-        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ iconChar Black)        
-        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ iconChar White)
+        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ diskIconChar Black)        
+        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ diskIconChar White)
 
         footer = 
             "Available Disks" ++ "\n" ++
@@ -230,4 +231,4 @@ gameStateDisplay mbShowMoves tagged =
 
 boardWithFlipCountDisplay :: All_State -> String
 boardWithFlipCountDisplay tagged =
-    Board.boardWithFlipCountDisplay $ board tagged
+    Display.boardWithFlipCountDisplay $ board tagged

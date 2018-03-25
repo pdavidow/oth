@@ -6,7 +6,6 @@ module Disk
     , flipDisk
     , makeDisk
     , toggleColor
-    , iconChar
     )
     where
 
@@ -38,10 +37,3 @@ toggleColor color =
 flipDisk :: Disk -> Disk
 flipDisk (Disk initColor_dontTouch flipCount) =
     Disk initColor_dontTouch $ flipCount + 1       
-
-
-iconChar :: Color -> Char
-iconChar color =
-    case color of
-        Black -> 'X' -- 'x'
-        White -> 'O' -- 'o'
