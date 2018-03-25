@@ -1,5 +1,5 @@
 module Position
-    ( Position
+    ( Position -- hiding constructor
     , PosRow(..)
     , adjacentPositions
     , radiatingPosRows

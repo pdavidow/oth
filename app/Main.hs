@@ -2,7 +2,7 @@ module Main where
 
 import Text.Read
 
-import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner )
+import GameState ( PlayGameState(..), All_State(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner, boardWithFlipCountDisplay )
 import Board ( Move, movePosChoices, movePosChoicesNomenclature )
 import Disk ( Color(..) )
 import Position ( Position )
@@ -20,6 +20,7 @@ play playGameState = do
     let moves = possibleMoves taggedState
     let numberedMovesWithPos = movePosChoices moves
       
+    putStrLn ""
     putStrLn $ gameStateDisplay Nothing $ PlayState playGameState
     handleChoice playerColor numberedMovesWithPos moves playGameState 
 
@@ -31,6 +32,7 @@ handleChoice playerColor numberedMovesWithPos moves playGameState  = do
     if n == choiceNumberFor_Resign then do
         return ()
     else if n == choiceNumberFor_DisplayChoicesOnBoard then do
+        putStrLn ""
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
         handleChoice playerColor numberedMovesWithPos moves playGameState 
     else do
@@ -42,20 +44,31 @@ handleChoice playerColor numberedMovesWithPos moves playGameState  = do
 
             EndState x -> do
                 putStrLn $ gameStateDisplay Nothing taggedState
-                putStrLn ""
-                putStrLn $ "GAME OVER! " ++ show (winner $ gameSummary x)
+                putStrLn $ "\nGAME OVER! " ++ show (winner $ gameSummary x)
                 putStrLn $ show $ gameSummary x
                 putStrLn ""
+                putStrLn "########################################"
+                putStrLn "FYI, here are the flip-counts:\n"
+                putStrLn $ boardWithFlipCountDisplay taggedState
+                putStrLn "########################################"
                 return ()
 
 
 getMoveChoice :: Color -> [(Int, Position)] -> IO Int
 getMoveChoice playerColor numberedMovesWithPos = do
-    let posTags = map fst numberedMovesWithPos
+    let posTags = Prelude.map fst numberedMovesWithPos
     let validChoices = choiceNumberFor_Resign : choiceNumberFor_DisplayChoicesOnBoard : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = "Move choices for " ++ show playerColor ++ ": (" ++ show choiceNumberFor_Resign ++ ":resign, " ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorString playerColor) ++ " Moves: (" ++ show choiceNumberFor_Resign ++ ":resign, " ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    putStrLn ""
     getValidMoveChoice prompt validChoices
+
+
+colorString :: Color -> String
+colorString c =
+    case c of
+        Black -> "BLACK"
+        White -> "WHITE"
 
 
 getValidMoveChoice :: String -> [Int] -> IO Int

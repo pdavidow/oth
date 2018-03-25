@@ -10,17 +10,18 @@ module GameState
     , blackAndWhiteUnusedDiskCounts
     , applyMove
     , gameStateDisplay
+    , GameState.boardWithFlipCountDisplay
     , gameState
     , gameSummary
     , winner
-    )  
+    )   
     where
  
 import qualified Data.Map.Strict as Map ( (!) )
 import Data.List ( intersperse )
 
 import Disk ( Color(..), toggleColor, iconChar )
-import Board ( Board, Move(..), applyBoardMove, initialBoard, numSquaresColored, validMoves, boardDisplay, boardWithValidMovesDisplay ) 
+import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves, boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( Position )
@@ -63,9 +64,9 @@ possibleMoves tagged =
     x where ((_, x, _, _, _)) = gameStateElems tagged
 
 
-blackAndWhiteUnusedDiskCounts :: All_State -> (Int, Int)
+blackAndWhiteUnusedDiskCounts :: All_State -> ( Int, Int )
 blackAndWhiteUnusedDiskCounts tagged =
-    (b, w) where ((_, _, b, w, _)) = gameStateElems tagged
+    ( b, w ) where ((_, _, b, w, _)) = gameStateElems tagged
 
 
 board :: All_State -> Board
@@ -73,17 +74,14 @@ board tagged =
     x where ((_, _, _, _, x)) = gameStateElems tagged
 
 
-gameStateElems :: All_State -> (Color, [Move], Int, Int, Board)
+gameStateElems :: All_State -> ( Color, [Move], Int, Int, Board )
 gameStateElems tagged =
     let
-        (GameState (NextToMove c) (PossibleMoves m) b w bd) = gameState tagged
+        (GameState (NextToMove color) (PossibleMoves moves) b w board) = gameState tagged
+        blackUnusedDiskCount = UnusedDiskCount.countFrom $ BlackUnused b
+        whiteUnusedDiskCount = UnusedDiskCount.countFrom $ WhiteUnused w
     in
-        ( c
-        , m
-        , UnusedDiskCount.countFrom $ BlackUnused b
-        , UnusedDiskCount.countFrom $ WhiteUnused w
-        , bd
-        )
+        ( color, moves, blackUnusedDiskCount, whiteUnusedDiskCount, board )
 
 
 gameState :: All_State -> GameState
@@ -201,7 +199,7 @@ winner (GameSummary _ b w) =
 gameSummary :: EndGameState -> GameSummary
 gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
     let
-        m = numSquaresColored bd
+        m = squaresColoredCount bd
 
         b = makeBlackSquareCount $ m Map.! Black
         w = makeWhiteSquareCount $ m Map.! White
@@ -227,4 +225,9 @@ gameStateDisplay mbShowMoves tagged =
                 Just xs -> boardWithValidMovesDisplay xs bd
                 Nothing -> boardDisplay bd
     in
-        boardString ++ "\n" ++ footer     
+        boardString ++ "\n\n" ++ footer     
+
+
+boardWithFlipCountDisplay :: All_State -> String
+boardWithFlipCountDisplay tagged =
+    Board.boardWithFlipCountDisplay $ board tagged

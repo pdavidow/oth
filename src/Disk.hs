@@ -2,6 +2,7 @@ module Disk
     ( Disk -- hiding constructor
     , Color(..)
     , diskColor
+    , _flipCount
     , flipDisk
     , makeDisk
     , toggleColor

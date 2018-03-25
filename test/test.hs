@@ -6,13 +6,15 @@ import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
 import Data.Function ( (&) )
+import Data.List ( foldl' )
 
-import Board ( Board, EmptySquare(..), Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardDisplay, boardFromConfig, toPos, applyBoardMove, filledPositions, boardWithValidMovesDisplay, movePosChoices)
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardDisplay, boardFromConfig, toPos, applyBoardMove, filledPositions, boardWithValidMovesDisplay, movePosChoices, diskFrom, filledSquares, boardWithFlipCountDisplay, boardAt ) -- flipAt
 import Position ( PosRow(..), radiatingPosRows )
-import Disk ( Color(..) )
+import Disk ( Color(..), _flipCount )
 import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, blackAndWhiteUnusedDiskCounts, gameState )
 import UnusedDiskCount ( All_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
+import Position ( Position )
 
 main = defaultMain tests
 
@@ -56,14 +58,14 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-          boardDisplay initialBoard @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n"
+          boardDisplay initialBoard @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
           
 
         , testCase "boardWithValidMoves_DisplayString" $
             let
                 board = initialBoard
             in
-              boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n"
+              boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
 
         , testGroup "validMoves Black initialBoard" $
             let
@@ -249,16 +251,16 @@ unitTests = testGroup "Unit tests" $
             (c1, c2, c3) = (nextToMove tagged1, nextToMove tagged2, nextToMove tagged3)
           in
               [ testCase "initial: gameStateDisplay Nothing" $ 
-                display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
                 
               , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
-                display2 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display2 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
 
               , testCase "After move C4: gameStateDisplay Nothing" $ 
-                display3 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display3 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
   
               , testCase "After move C4: gameStateDisplay (Just numberedMovesWithPos)" $ 
-                display4 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    1    .    3    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    2    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display4 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    1    .    3    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    2    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
 
               , testCase "initial unused disk counts" $ 
                 (b1, w1) @?= (32, 32) 
@@ -335,6 +337,33 @@ unitTests = testGroup "Unit tests" $
     
                       , testCase "Black after using disk for his first move, then transfers another to White -- prior to White's first move" $ 
                         (b2, w2) @?= (30, 1)  
-                      ]                      
+                      ]   
+              -------------------------------------------------------------------------------------------                        
+              -- to test this section, temp uncomment out -- but need to expose normally unexposed Board.flipAt       
+              -------------------------------------------------------------------------------------------  
+              -- , testGroup "Flip initial disks in progressive amounts, then boardWithFlipCountDisplay (contrived)" $
+              --     let
+              --         (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+
+              --         f :: Position -> Board -> Board
+              --         f = \ pos board -> flipAt (boardAt board pos) board
+              
+              --         board' = filledSquares board
+              --             & map (toPos . Board_FilledSquare)
+              --             & zip [(1 :: Int)..]
+              --             & foldl' (\ acc ((i, pos)) -> iterate (f pos) acc !! i ) board
+              
+              --         flippedCounts = filledSquares board'
+              --             & map (\ x -> _flipCount $ diskFrom x)
+              --     in
+              --         [ testCase "(verify test logic)" $ 
+              --           flippedCounts @?= [1,2,3,4]
+
+              --         , testCase "boardWithFlipCountDisplay" $
+              --           boardWithFlipCountDisplay board' @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    1    2    .    .    .  \n\n5   .    .    .    3    4    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
+              --         ]
+              -------------------------------------------------------------------------------------------  
               ]
     ]
+
+    

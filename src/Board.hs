@@ -1,6 +1,7 @@
 module Board
     ( Board
     , EmptySquare(..)
+    , FilledSquare -- hiding constructor
     , Move(..)
     , FilledRow(..)
     , BoardSquare(..)
@@ -8,29 +9,31 @@ module Board
     , validMoves
     , movePosChoices
     , movePosChoicesNomenclature
-    , boardDisplay
-    , boardWithValidMovesDisplay
     , boardFromConfig
     , toPos
     , applyBoardMove
     , filledPositions
     , boardSquaresColored
-    , numSquaresColored
+    , squaresColoredCount
     , emptySquares
+    , diskFrom
+    , filledSquares
+    , boardDisplay
+    , boardWithValidMovesDisplay
+    , boardWithFlipCountDisplay
+    , boardAt
+    --,                                         flipAt -- Should NOT be exposed, but temp expose for sake of commented-out test
     )
     where
 
-    -- module Board
-    -- ( )
-    -- where
 
-import Data.Maybe ( fromMaybe, mapMaybe  )
-import Data.List ( find, foldl', nub )
+import Data.Maybe ( mapMaybe  )
+import Data.List ( find, foldl', intersperse, nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 import qualified Data.Map.Strict as Map ( Map, empty, insert )
 
-import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor, iconChar )  
+import Disk ( Disk, Color(..), diskColor, _flipCount, flipDisk, makeDisk, toggleColor, iconChar )  
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
 import ColumnName ( columnLegend, posNomenclature )
@@ -96,7 +99,6 @@ initialBoard =
 
 boardAt :: Board -> Position -> BoardSquare
 boardAt (Board board) pos =
-    -- todo Position should be SmartPosition which is bounded in (1,1)(boardSize,boardSize)
     board ! pos
 
 
@@ -141,6 +143,11 @@ emptySquares (Board board) =
 filledSquares :: Board -> [FilledSquare]
 filledSquares (Board board) =
     mapMaybe toFilledSquare $ elems board
+
+
+diskFrom :: FilledSquare -> Disk
+diskFrom (FilledSquare disk _) =  
+    disk
 
 
 isSquareColored :: Color -> FilledSquare -> Bool
@@ -209,20 +216,20 @@ squaresColored color xs =
     filter (\ x -> isSquareColored color x) xs
 
 
-numColor :: Color -> [FilledSquare] -> Int
-numColor color xs =
+colorCount :: Color -> [FilledSquare] -> Int
+colorCount color xs =
     xs
         & squaresColored color
         & length
 
 
-numSquaresColored :: Board -> Map.Map Color Int
-numSquaresColored board =
+squaresColoredCount :: Board -> Map.Map Color Int
+squaresColoredCount board =
     let
         xs = filledSquares board
 
         f :: Color -> Map.Map Color Int -> Map.Map Color Int
-        f = \ color m -> Map.insert color (numColor color xs) m
+        f = \ color m -> Map.insert color (colorCount color xs) m
     in
         Map.empty   
             & f Black
@@ -266,8 +273,7 @@ movePos (Move _ (EmptySquare pos _) _) =
 movePosChoices :: [Move] -> [(Int, Position)]
 movePosChoices xs =
     -- 1 based
-    map movePos xs
-        & zip [(1 :: Int)..] -- lazy, so infinite list is fine
+    zip [(1 :: Int)..] $ map movePos xs
 
 
 movePosChoicesNomenclature :: [(Int, Position)] -> String
@@ -293,62 +299,76 @@ applyBoardMove move board =
             & flipOutflanks
 
 
-boardSquare_Display :: Maybe (Position -> String) -> BoardSquare -> String
-boardSquare_Display mbF boardSquare =
-        let 
-            -- Assumptions 
-                -- Square width is 5 chars
-                -- Display contents are either of length 1 or 2
+squareDisplay :: (Position -> String) -> (Disk -> String) -> BoardSquare -> String
+squareDisplay emptyF filledF square =
+    case square of
+        Board_EmptySquare _ -> emptyF $ toPos square
+        Board_FilledSquare (FilledSquare disk _) -> filledF disk
+            
 
-            padded :: String -> String
-            padded s = 
-                case length s of
-                    1 -> "  " ++ s ++ "  "
-                    2 ->  " " ++ s ++ "  "
-                    _ -> s
-
-            emptySquareString = padded $ 
-                case mbF of
-                    Just f -> f $ toPos boardSquare
-                    Nothing -> [defaultEmptySquareChar]
-        in
-            case boardSquare of
-                Board_EmptySquare _ -> emptySquareString 
-                Board_FilledSquare (FilledSquare disk _) -> padded [iconChar $ diskColor disk] 
-
-
-boardWithCustomEmptySquareDisplay :: Maybe (Position -> String) -> Board -> String
-boardWithCustomEmptySquareDisplay mbF (Board board) =
+boardWithSquareDisplay :: (Position -> String) -> (Disk -> String) -> Board -> String
+boardWithSquareDisplay emptyF filledF (Board board) =
     let
-        header = "    " ++ columnLegend
-
-        f = \ i -> 
-            [show i ++ " "] 
-                ++ (map (boardSquare_Display mbF) $ vSlice ((i - 1) * boardSize) boardSize $ elems board) 
-                    ++ ["\n\n"]
-
-        boardString = concat $ concat $ map f [1..boardSize]             
+        boardString = 
+            [1 .. boardSize] 
+                & map 
+                    ( \ i -> (show i ++ " ") ++ 
+                        ( (vSlice ((i - 1) * boardSize) boardSize $ elems board)
+                            & concatMap (squareDisplay emptyF filledF)
+                        )
+                    )
+                & intersperse ("\n\n")
+                & concat
     in
-        header ++ "\n" ++ boardString 
+        "    " ++ columnLegend ++ "\n" ++ boardString 
 
 
-boardDisplay :: Board -> String
-boardDisplay b =
-    boardWithCustomEmptySquareDisplay Nothing b
-
-
-boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
-boardWithValidMovesDisplay xs b =
-    let
-        f :: Position -> String
-        f = \ pos -> 
-            case find (\ ((_, pos')) -> pos == pos') xs of
-                Just (moveN, _) -> show moveN
-                Nothing -> [defaultEmptySquareChar]
-    in
-        boardWithCustomEmptySquareDisplay (Just f) b
+padSquareContents :: String -> String
+padSquareContents s = 
+    -- Assume: Square width is 5 chars, and contents are either of length 1 or 2
+    case length s of
+        1 -> "  " ++ s ++ "  "
+        2 ->  " " ++ s ++ "  "
+        _ -> s
 
 
 defaultEmptySquareChar :: Char
 defaultEmptySquareChar = 
     '.'
+
+
+emptySquareContentsDisplay :: Position -> String
+emptySquareContentsDisplay _ = 
+    padSquareContents [defaultEmptySquareChar]
+
+
+filledSquareContentsDisplay :: Disk -> String
+filledSquareContentsDisplay disk = 
+    padSquareContents [iconChar $ diskColor disk]
+
+
+boardDisplay :: Board -> String
+boardDisplay b =
+    boardWithSquareDisplay emptySquareContentsDisplay filledSquareContentsDisplay b
+
+
+boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
+boardWithValidMovesDisplay xs b =
+    let
+        emptyF :: Position -> String
+        emptyF = \ pos -> padSquareContents $
+            case find (\ ((_, pos')) -> pos == pos') xs of
+                Just (moveN, _) -> show moveN
+                Nothing -> [defaultEmptySquareChar]
+    in
+        boardWithSquareDisplay emptyF filledSquareContentsDisplay b
+
+
+boardWithFlipCountDisplay :: Board -> String
+boardWithFlipCountDisplay b =
+    let
+        filledF :: Disk -> String
+        filledF disk = 
+            padSquareContents $ show $ _flipCount disk
+    in
+        boardWithSquareDisplay emptySquareContentsDisplay filledF b
