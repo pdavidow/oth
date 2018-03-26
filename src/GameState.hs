@@ -27,6 +27,7 @@ import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), ma
 import Position ( Position )
 import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, diskIconChar )
 
+
 data GameState = GameState NextToMove PossibleMoves BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
 
 newtype NextToMove = NextToMove Color deriving (Eq, Show)
@@ -208,6 +209,7 @@ gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
         GameSummary reason b  w
      
 
+-- todo move to Display ..?
 gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
 gameStateDisplay mbShowMoves tagged =
     let
@@ -229,6 +231,7 @@ gameStateDisplay mbShowMoves tagged =
         boardString ++ "\n\n" ++ footer     
 
 
+-- todo move to Display ..?
 boardWithFlipCountDisplay :: All_State -> String
 boardWithFlipCountDisplay tagged =
     Display.boardWithFlipCountDisplay $ board tagged
