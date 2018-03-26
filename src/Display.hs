@@ -5,6 +5,8 @@ module Display
     , gameStateDisplay
     , movePosChoicesNomenclature
     , diskIconChar
+    , gameSummaryDisplay
+    , colorAllCapsString
     )
     where
 
@@ -16,8 +18,16 @@ import Disk ( Disk, Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import GameState ( All_State, gameStateElems )
+import GameState ( EndGameState, All_State, GameSummary(..), gameStateElems, gameSummary, winner )
+import SquareCount ( All_SquareCount(..), countFrom )
 import Lib ( vSlice ) 
+
+
+colorAllCapsString :: Color -> String
+colorAllCapsString c =
+    case c of
+        Black -> "BLACK"
+        White -> "WHITE"
 
 
 movePosChoicesNomenclature :: [(Int, Position)] -> String
@@ -128,3 +138,11 @@ gameStateDisplay mbShowMoves tagged =
                 Nothing -> boardDisplay bd
     in
         boardString ++ "\n\n" ++ footer   
+
+
+gameSummaryDisplay :: EndGameState -> String
+gameSummaryDisplay x =
+    let 
+        g@(GameSummary reason b w) = gameSummary x
+    in
+        "GAME OVER (" ++ show reason ++ ") " ++ show (winner g) ++ ".  Disk-counts: Black " ++ show (countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (countFrom $ Tagged_WhiteSquareCount w)

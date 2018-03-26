@@ -4,6 +4,7 @@ module GameState
     , EndGameState(..)
     , All_State(..)
     , EndReason(..)
+    , GameSummary(..)
     , makePlayGameState
     , nextToMove
     , possibleMoves
@@ -18,14 +19,11 @@ module GameState
     where
  
 import qualified Data.Map.Strict as Map ( (!) )
-import Data.List ( intersperse )
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
-import Position ( Position )
--- todo import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, diskIconChar )
 
 
 data GameState = GameState NextToMove PossibleMoves BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)

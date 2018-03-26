@@ -5,11 +5,11 @@ module Sequencer
 
 import Player ( PlayerBlack, PlayerWhite, All_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import GameState ( PlayGameState(..), All_State(..), applyMove, nextToMove, possibleMoves, gameSummary, winner, board )
+import GameState ( PlayGameState(..), All_State(..), applyMove, nextToMove, possibleMoves, board )
 import Board ( Move, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
-import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay )
+import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
 import Engine ( computerChoose )
 import Lib ( getValidChoice )
 
@@ -42,8 +42,7 @@ advance ps move playGameState = do
         EndState x -> do
             putStrLn $ gameStateDisplay Nothing taggedState
             putStrLn ""
-            putStrLn $ "GAME OVER! " ++ show (winner $ gameSummary x)
-            putStrLn $ show $ gameSummary x -- todo prettify
+            putStrLn $ gameSummaryDisplay x
             putStrLn ""
             putStrLn "########################################"
             putStrLn "FYI, here are the flip-counts:\n"
@@ -84,15 +83,8 @@ getMoveChoice color numberedMovesWithPos = do
     let posTags = Prelude.map fst numberedMovesWithPos
     let options = choiceNumberFor_DisplayChoicesOnBoard : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorString color) ++ " Moves: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorAllCapsString color) ++ " Moves: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
     getValidChoice prompt options
-
-
-colorString :: Color -> String
-colorString c =
-    case c of
-        Black -> "BLACK"
-        White -> "WHITE"
 
 
 choiceNumberFor_DisplayChoicesOnBoard :: Int
