@@ -9,11 +9,11 @@ module GameState
     , possibleMoves
     , blackAndWhiteUnusedDiskCounts
     , applyMove
-    , gameStateDisplay
     , gameState
     , gameSummary
     , winner
     , board
+    , gameStateElems
     )   
     where
  
@@ -25,7 +25,7 @@ import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCoun
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, All_UnusedDiskCount(..), initialBlackUnusedDiskCount, initialWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, All_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( Position )
-import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, diskIconChar )
+-- todo import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, diskIconChar )
 
 
 data GameState = GameState NextToMove PossibleMoves BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
@@ -80,6 +80,7 @@ gameStateElems :: All_State -> ( Color, [Move], Int, Int, Board )
 gameStateElems tagged =
     let
         (GameState (NextToMove color) (PossibleMoves moves) b w bd) = gameState tagged
+
         blackUnusedDiskCount = UnusedDiskCount.countFrom $ BlackUnused b
         whiteUnusedDiskCount = UnusedDiskCount.countFrom $ WhiteUnused w
     in
@@ -207,25 +208,3 @@ gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
         w = makeWhiteSquareCount $ m Map.! White
     in
         GameSummary reason b  w
-     
-
-
-gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
-gameStateDisplay mbShowMoves tagged =
-    let
-        (_, _, b, w, bd) = gameStateElems tagged
-        f = \ n char -> intersperse ' '  (replicate n $ char)
-        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ diskIconChar Black)        
-        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ diskIconChar White)
-
-        footer = 
-            "Available Disks" ++ "\n" ++
-            blackUnused ++ "\n" ++
-            whiteUnused
-
-        boardString = 
-            case mbShowMoves of
-                Just xs -> boardWithValidMovesDisplay xs bd
-                Nothing -> boardDisplay bd
-    in
-        boardString ++ "\n\n" ++ footer     

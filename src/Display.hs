@@ -2,6 +2,7 @@ module Display
     ( boardDisplay
     , boardWithValidMovesDisplay
     , boardWithFlipCountDisplay
+    , gameStateDisplay
     , movePosChoicesNomenclature
     , diskIconChar
     )
@@ -15,6 +16,7 @@ import Disk ( Disk, Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
+import GameState ( All_State, gameStateElems )
 import Lib ( vSlice ) 
 
 
@@ -104,3 +106,25 @@ boardWithFlipCountDisplay b =
             padSquareContents $ show $ _flipCount disk
     in
         boardWithSquareDisplay emptySquareContentsDisplay filledF b
+
+        
+
+gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
+gameStateDisplay mbShowMoves tagged =
+    let
+        (_, _, b, w, bd) = gameStateElems tagged
+        f = \ n char -> intersperse ' '  (replicate n $ char)
+        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ diskIconChar Black)        
+        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ diskIconChar White)
+
+        footer = 
+            "Available Disks" ++ "\n" ++
+            blackUnused ++ "\n" ++
+            whiteUnused
+
+        boardString = 
+            case mbShowMoves of
+                Just xs -> boardWithValidMovesDisplay xs bd
+                Nothing -> boardDisplay bd
+    in
+        boardString ++ "\n\n" ++ footer   

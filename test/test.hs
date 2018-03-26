@@ -11,11 +11,11 @@ import Data.List ( foldl' )
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt ) -- flipAt
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
-import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, gameStateDisplay, blackAndWhiteUnusedDiskCounts, gameState )
+import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, blackAndWhiteUnusedDiskCounts, gameState )
 import UnusedDiskCount ( All_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position )
-import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay )
+import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, gameStateDisplay )
 
 main = defaultMain tests
 
