@@ -3,13 +3,13 @@ module Sequencer
     ) 
     where
 
-import Player ( PlayerBlack, PlayerWhite, All_Player(..), playerTypeFrom, playerColor )
+import Player ( PlayerBlack, PlayerWhite, All_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import GameState ( PlayGameState(..), All_State(..), applyMove, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner, boardWithFlipCountDisplay )
+import GameState ( PlayGameState(..), All_State(..), applyMove, nextToMove, possibleMoves, gameStateDisplay, gameSummary, winner, board )
 import Board ( Move, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
-import Display ( movePosChoicesNomenclature )
+import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay )
 import Engine ( computerChoose )
 import Lib ( getValidChoice )
 
@@ -47,7 +47,7 @@ advance ps move playGameState = do
             putStrLn ""
             putStrLn "########################################"
             putStrLn "FYI, here are the flip-counts:\n"
-            putStrLn $ boardWithFlipCountDisplay taggedState
+            putStrLn $ boardWithFlipCountDisplay $ board taggedState
             putStrLn "########################################"
             return ()
 

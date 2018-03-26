@@ -91,7 +91,7 @@ boardFromConfig config =
 
 initialBoard :: Board
 initialBoard =
-    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo -- but not if have smart constrined pos
+    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo could constrain with smart pos
 
 
 boardAt :: Board -> Position -> BoardSquare

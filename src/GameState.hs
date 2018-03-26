@@ -10,10 +10,10 @@ module GameState
     , blackAndWhiteUnusedDiskCounts
     , applyMove
     , gameStateDisplay
-    , GameState.boardWithFlipCountDisplay
     , gameState
     , gameSummary
     , winner
+    , board
     )   
     where
  
@@ -209,7 +209,7 @@ gameSummary (EndGameState reason (GameState _ _ _ _ bd)) =
         GameSummary reason b  w
      
 
--- todo move to Display ..?
+
 gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
 gameStateDisplay mbShowMoves tagged =
     let
@@ -229,9 +229,3 @@ gameStateDisplay mbShowMoves tagged =
                 Nothing -> boardDisplay bd
     in
         boardString ++ "\n\n" ++ footer     
-
-
--- todo move to Display ..?
-boardWithFlipCountDisplay :: All_State -> String
-boardWithFlipCountDisplay tagged =
-    Display.boardWithFlipCountDisplay $ board tagged

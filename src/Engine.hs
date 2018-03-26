@@ -16,6 +16,9 @@ import Position ( isCornerPos, isCornerNeighborPos )
 data Strategy 
     = RandomStrategy
     | SearchDepth_0
+    -- | SearchDepth_1
+    -- | SearchDepth_2
+    -- ... todo
         deriving (Eq, Show)
 
 
@@ -45,20 +48,6 @@ bestMove moves =
         sortedCandidates = lowest ++ medium ++ highest
     in
         last sortedCandidates
-
-
--- todo unused?
--- maxFlips :: [Move] -> Int            
--- maxFlips moves = 
---     let
---         flipCount :: [FilledRow] -> Int
---         flipCount = \ filledRows -> sum $ map (\ (FilledRow xs) -> length xs) filledRows
---     in
---         (zip [(0 :: Int)..] moves)
---             & map (\ ((i, move)) -> (i, flipCount $ _outflanks move))
---             & sortOn (\ ((_, x)) -> x)
---             & last
---             & fst
 
 
 maxFlipsSorted :: [Move] -> [Move]            
