@@ -19,6 +19,7 @@ module Board
     , filledSquares
     , boardAt
     , boardRow
+    , movePos
     --, ################# flipAt -- Should NOT be exposed (can temp expose for sake of commented-out test)
     )
     where
@@ -90,7 +91,7 @@ boardFromConfig config =
 
 initialBoard :: Board
 initialBoard =
-    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))]
+    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo -- but not if have smart constrined pos
 
 
 boardAt :: Board -> Position -> BoardSquare

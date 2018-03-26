@@ -22,11 +22,11 @@ main = do
 getWhite_PlayerType :: IO PlayerType
 getWhite_PlayerType = do
     let options = [0, 1, 2]
-    let prompt = "WHITE player is 0:Person, 1:Computer-Random, 2:Computer-Max-Flips"
+    let prompt = "WHITE player is 0:Person, 1:Computer-Random, 2:Computer-SearchDepth-0"
     n <- getValidChoice prompt options
 
     return $ case n of
         0 -> Person
         1 -> Computer RandomStrategy
-        2 -> Computer MaxFlipsStrategy
-        _ -> Person
+        2 -> Computer SearchDepth_0
+        _ -> Person -- should never get here

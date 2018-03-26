@@ -16,6 +16,8 @@ import Data.Function ( (&) )
 import Disk ( Color(..) )
 import qualified Data.Map.Strict as Map ( Map, empty, insert )
 
+import BoardSize ( boardSize )
+
 
 newtype UnusedDiskCount = UnusedDiskCount Int deriving (Eq, Show)
 
@@ -41,7 +43,7 @@ initialWhiteUnusedDiskCount =
 
 initialUnusedDiskCount :: UnusedDiskCount
 initialUnusedDiskCount =
-    UnusedDiskCount 32 -- assume boardSize 8
+    UnusedDiskCount $ div (boardSize * boardSize) 2 -- apparently
 
 
 isZeroCount :: All_UnusedDiskCount -> Bool

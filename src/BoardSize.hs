@@ -5,4 +5,4 @@ module BoardSize
         
 boardSize :: Int
 boardSize = 
-    8
+    8 -- needs to be even

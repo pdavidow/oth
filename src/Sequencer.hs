@@ -21,15 +21,14 @@ moveSequence ps playGameState = do
     putStrLn ""
     putStrLn $ gameStateDisplay Nothing taggedState
 
-    moveIndex <- 
-        case playerTypeFrom taggedPlayer of
-            Person -> do personChoose (playerColor taggedPlayer) playGameState
-            Computer strategy -> do computerChoose strategy playGameState
+    move <- case playerTypeFrom taggedPlayer of
+        Person -> do
+            moveIndex <- personChoose (playerColor taggedPlayer) playGameState
+            return $ (possibleMoves taggedState) !! moveIndex
+        Computer strategy -> do 
+            computerChoose strategy playGameState
 
-    if moveIndex == choiceNumberFor_Resign then do
-        return ()
-    else do
-        advance ps (possibleMoves taggedState !! moveIndex) playGameState
+    advance ps move playGameState
 
 
 advance :: (PlayerBlack, PlayerWhite) -> Move -> PlayGameState -> IO ()
@@ -72,21 +71,20 @@ handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> PlayGameState -> I
 handlePersonChoose color numberedMovesWithPos moves playGameState  = do
     n <- getMoveChoice color numberedMovesWithPos
 
-    if n == choiceNumberFor_Resign then do
-        return n
-    else if n == choiceNumberFor_DisplayChoicesOnBoard then do
+    if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn ""
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
         handlePersonChoose color numberedMovesWithPos moves playGameState 
-    else do return $ n - 1 -- index is zero-based
+    else do 
+        return $ n - 1 -- index is zero-based
 
 
 getMoveChoice :: Color -> [(Int, Position)] -> IO Int
 getMoveChoice color numberedMovesWithPos = do
     let posTags = Prelude.map fst numberedMovesWithPos
-    let options = choiceNumberFor_Resign : choiceNumberFor_DisplayChoicesOnBoard : posTags
+    let options = choiceNumberFor_DisplayChoicesOnBoard : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorString color) ++ " Moves: (" ++ show choiceNumberFor_Resign ++ ":resign, " ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorString color) ++ " Moves: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
     getValidChoice prompt options
 
 
@@ -100,10 +98,3 @@ colorString c =
 choiceNumberFor_DisplayChoicesOnBoard :: Int
 choiceNumberFor_DisplayChoicesOnBoard = 
     99
-
-
-choiceNumberFor_Resign :: Int
-choiceNumberFor_Resign =
-    -1
-
-        

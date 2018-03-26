@@ -3,6 +3,8 @@ module Position
     , PosRow(..)
     , adjacentPositions
     , radiatingPosRows
+    , isCornerPos
+    , isCornerNeighborPos
     )
     where
 
@@ -15,6 +17,47 @@ type Position = ( Int, Int )
 newtype PosRow = PosRow [Position]  deriving (Eq, Show) -- horiz, vert, diag
 
 data Dir = Inc | Dec
+
+
+isCornerPos :: Position -> Bool
+isCornerPos (i,j) =
+    f i && f j
+        where f = \x -> x == 1 || x == boardSize
+
+
+isCornerNeighborPos :: Position -> Bool
+isCornerNeighborPos pos =
+    isCornerNeighborPos_UpperLeft  pos ||
+    isCornerNeighborPos_UpperRight pos ||
+    isCornerNeighborPos_LowerRight pos ||
+    isCornerNeighborPos_LowerLeft  pos 
+    
+
+isCornerNeighborPos_UpperLeft :: Position -> Bool
+isCornerNeighborPos_UpperLeft (1,2) = True
+isCornerNeighborPos_UpperLeft (2,2) = True
+isCornerNeighborPos_UpperLeft (2,1) = True
+isCornerNeighborPos_UpperLeft (_,_) = False
+
+
+isCornerNeighborPos_UpperRight :: Position -> Bool
+isCornerNeighborPos_UpperRight (1,j) = (j == boardSize - 1)
+isCornerNeighborPos_UpperRight (2,j) = (j == boardSize - 1) || (j == boardSize)
+isCornerNeighborPos_UpperRight (_,_) = False
+
+
+isCornerNeighborPos_LowerRight :: Position -> Bool
+isCornerNeighborPos_LowerRight (i,j) = 
+    ((i == boardSize - 1) && (j == boardSize - 1)) ||
+    ((i == boardSize - 1) && (j == boardSize))     ||
+    ((i == boardSize)     && (j == boardSize - 1))
+
+
+isCornerNeighborPos_LowerLeft :: Position -> Bool
+isCornerNeighborPos_LowerLeft (7,1) = True
+isCornerNeighborPos_LowerLeft (7,2) = True
+isCornerNeighborPos_LowerLeft (8,2) = True
+isCornerNeighborPos_LowerLeft (_,_) = False
 
 
 adjacentPositions :: Position -> [Position]
