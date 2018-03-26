@@ -5,7 +5,6 @@ module Engine
     where
 
 import System.Random  
-import Data.Function ( (&) )
 import Data.List ( sortOn )
 
 import GameState ( PlayGameState(..), All_State(..), possibleMoves )
@@ -22,7 +21,7 @@ data Strategy
         deriving (Eq, Show)
 
 
-computerChoose :: Strategy -> PlayGameState -> IO Move -- todo return Maybe ?
+computerChoose :: Strategy -> PlayGameState -> IO Move 
 computerChoose strat playGameState = do
     let moves = possibleMoves $ PlayState playGameState 
 
@@ -38,9 +37,7 @@ computerChoose strat playGameState = do
 
 bestMove :: [Move] -> Move
 bestMove moves = 
-    -- take corners, consider max-flips; avoid corner neighbors
     let
-        -- todo wasteful?
         highest = maxFlipsSorted $ filter (\ x -> isHighestWeight $ weightingFactor x) moves
         medium  = maxFlipsSorted $ filter (\ x -> isMediumWeight  $ weightingFactor x) moves
         lowest  = maxFlipsSorted $ filter (\ x -> isLowestWeight  $ weightingFactor x) moves

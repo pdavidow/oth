@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
 
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt ) -- flipAt
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- flipAt
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
 import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, blackAndWhiteUnusedDiskCounts, gameState )
@@ -33,7 +33,7 @@ filledRowToPosRow (FilledRow xs) =
 
 board_Figure2 :: Board 
 board_Figure2 =
-    boardFromConfig -- page 2: http://www.boardgamecapital.com/game_rules/othello.pdf
+    boardFromConfig 
         [ (White,(3,3)), (White,(3,7)), (White,(7,5)),
           (Black,(4,3)), (Black,(4,6)), (Black,(5,3)), (Black,(5,5)), (Black,(6,3)), (Black,(6,4)), (Black,(7,4))
         ]

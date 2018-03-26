@@ -4,10 +4,10 @@ module ColumnName
     )
     where
 
-import Data.Ix as Ix ( Ix, index, range )
+import Data.Ix as Ix ( Ix, range )
 import Position ( Position )
 
--- as per http://www.boardgamecapital.com/game_rules/othello.pdf
+
 -- can be auto-generated with Template-Haskell
 data ColumnName = A | B | C | D | E | F | G | H  deriving (Eq, Ix, Ord, Show)
 

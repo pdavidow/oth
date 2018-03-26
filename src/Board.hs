@@ -20,7 +20,7 @@ module Board
     , boardAt
     , boardRow
     , movePos
-    --, ################# flipAt -- Should NOT be exposed (can temp expose for sake of commented-out test)
+    --, ################# flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
     where
 

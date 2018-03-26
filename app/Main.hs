@@ -1,6 +1,6 @@
 module Main where
 
-import Player ( PlayerWhite, makePlayerBlack, makePlayerWhite )
+import Player ( makePlayerBlack, makePlayerWhite )
 import PlayerType ( PlayerType(..) )
 import Sequencer ( moveSequence )
 import GameState ( makePlayGameState )

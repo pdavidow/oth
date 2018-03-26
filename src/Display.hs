@@ -116,7 +116,6 @@ boardWithFlipCountDisplay b =
             padSquareContents $ show $ _flipCount disk
     in
         boardWithSquareDisplay emptySquareContentsDisplay filledF b
-
         
 
 gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
