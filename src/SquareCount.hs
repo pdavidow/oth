@@ -1,7 +1,7 @@
 module SquareCount
     ( BlackSquareCount -- hiding constructor
     , WhiteSquareCount -- hiding constructor
-    , All_SquareCount(..)
+    , Tagged_SquareCount(..)
     , makeBlackSquareCount
     , makeWhiteSquareCount
     , countFrom
@@ -15,7 +15,7 @@ newtype BlackSquareCount = BlackSquareCount SquareCount deriving (Eq, Show)
 
 newtype WhiteSquareCount = WhiteSquareCount SquareCount deriving (Eq, Show)
 
-data All_SquareCount
+data Tagged_SquareCount
     = Tagged_BlackSquareCount BlackSquareCount
     | Tagged_WhiteSquareCount WhiteSquareCount
         deriving (Eq, Show)
@@ -31,7 +31,7 @@ makeWhiteSquareCount n =
     WhiteSquareCount $ SquareCount n
 
 
-countFrom :: All_SquareCount -> Int
+countFrom :: Tagged_SquareCount -> Int
 countFrom tagged =
     case tagged of
         Tagged_BlackSquareCount (BlackSquareCount (SquareCount n)) -> n

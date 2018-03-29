@@ -1,7 +1,7 @@
 module Player
     ( PlayerBlack -- hiding constructor
     , PlayerWhite -- hiding constructor
-    , All_Player(..)
+    , Tagged_Player(..)
     , makePlayerBlack
     , makePlayerWhite
     , playerTypeFrom
@@ -17,7 +17,8 @@ data PlayerBlack = PlayerBlack PlayerType deriving (Eq, Show)
 
 data PlayerWhite = PlayerWhite PlayerType deriving (Eq, Show)
 
-data All_Player
+-- todo tagged nomen
+data Tagged_Player
     = BlackPlayerTag PlayerBlack
     | WhitePlayerTag PlayerWhite
         deriving (Eq, Show)
@@ -33,14 +34,14 @@ makePlayerWhite x =
     PlayerWhite x
 
 
-playerTypeFrom :: All_Player -> PlayerType
+playerTypeFrom :: Tagged_Player -> PlayerType
 playerTypeFrom tagged =
     case tagged of
         BlackPlayerTag (PlayerBlack x) -> x
         WhitePlayerTag (PlayerWhite x) -> x
 
 
-playerColor :: All_Player -> Color
+playerColor :: Tagged_Player -> Color
 playerColor tagged =
     case tagged of
         BlackPlayerTag _ -> Black

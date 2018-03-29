@@ -25,6 +25,7 @@ dependencies:
 - vector
 - containers
 - random
+- game-tree
 
 library:
   source-dirs: src

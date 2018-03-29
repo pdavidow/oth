@@ -7,12 +7,12 @@ import Test.Tasty.HUnit
 
 import Data.Function ( (&) )
 import Data.List ( foldl' )
-
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- flipAt
+ 
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- flipAt
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
-import GameState ( GameState(..), PlayGameState(..), EndGameState(..), All_State(..), EndReason(..), applyMove, makePlayGameState, nextToMove, possibleMoves, blackAndWhiteUnusedDiskCounts, gameState )
-import UnusedDiskCount ( All_UnusedDiskCount(..), countFrom, decreaseByOne )
+import State ( State(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, nextMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState)
+import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position )
 import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, gameStateDisplay )
@@ -21,9 +21,6 @@ main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [unitTests] 
-
--- invariant: flipCount for 4 corners == 0 
-
 
 filledRowToPosRow :: FilledRow -> PosRow
 filledRowToPosRow (FilledRow xs) =
@@ -72,20 +69,15 @@ unitTests = testGroup "Unit tests" $
             let
                 moves = validMoves Black initialBoard
 
-                move0 = moves !! 0
-                move1 = moves !! 1
-                move2 = moves !! 2
-                move3 = moves !! 3
+                (Move _ (EmptySquare pos0 _) (Outflanks o0)) = moves !! 0
+                (Move _ (EmptySquare pos1 _) (Outflanks o1)) = moves !! 1
+                (Move _ (EmptySquare pos2 _) (Outflanks o2)) = moves !! 2
+                (Move _ (EmptySquare pos3 _) (Outflanks o3)) = moves !! 3
 
-                (EmptySquare pos0 _) = _square move0
-                (EmptySquare pos1 _) = _square move1
-                (EmptySquare pos2 _) = _square move2
-                (EmptySquare pos3 _) = _square move3
-
-                outflanks0 = map filledRowToPosRow $ _outflanks move0
-                outflanks1 = map filledRowToPosRow $ _outflanks move1
-                outflanks2 = map filledRowToPosRow $ _outflanks move2
-                outflanks3 = map filledRowToPosRow $ _outflanks move3
+                outflanks0 = map filledRowToPosRow o0
+                outflanks1 = map filledRowToPosRow o1
+                outflanks2 = map filledRowToPosRow o2
+                outflanks3 = map filledRowToPosRow o3
             in
                 [ testCase "4 moves" $ 
                   length moves @?= 4
@@ -119,20 +111,15 @@ unitTests = testGroup "Unit tests" $
             let
                 moves = validMoves Black board_Figure2
 
-                move0 = moves !! 0
-                move1 = moves !! 1
-                move2 = moves !! 2
-                move3 = moves !! 3
+                (Move _ (EmptySquare pos0 _) (Outflanks o0)) = moves !! 0
+                (Move _ (EmptySquare pos1 _) (Outflanks o1)) = moves !! 1
+                (Move _ (EmptySquare pos2 _) (Outflanks o2)) = moves !! 2
+                (Move _ (EmptySquare pos3 _) (Outflanks o3)) = moves !! 3
 
-                (EmptySquare pos0 _) = _square move0
-                (EmptySquare pos1 _) = _square move1
-                (EmptySquare pos2 _) = _square move2
-                (EmptySquare pos3 _) = _square move3
-
-                outflanks0 = map filledRowToPosRow $ _outflanks move0
-                outflanks1 = map filledRowToPosRow $ _outflanks move1
-                outflanks2 = map filledRowToPosRow $ _outflanks move2
-                outflanks3 = map filledRowToPosRow $ _outflanks move3
+                outflanks0 = map filledRowToPosRow o0
+                outflanks1 = map filledRowToPosRow o1
+                outflanks2 = map filledRowToPosRow o2
+                outflanks3 = map filledRowToPosRow o3
             in
                 [ testCase "4 moves" $ 
                   length moves @?= 4
@@ -166,14 +153,11 @@ unitTests = testGroup "Unit tests" $
             let
                 moves = validMoves White board_Figure2
 
-                move0 = moves !! 0
-                move1 = moves !! 1
+                (Move _ (EmptySquare pos0 _) (Outflanks o0)) = moves !! 0
+                (Move _ (EmptySquare pos1 _) (Outflanks o1)) = moves !! 1
 
-                (EmptySquare pos0 _) = _square move0
-                (EmptySquare pos1 _) = _square move1
-
-                outflanks0 = map filledRowToPosRow $ _outflanks move0
-                outflanks1 = map filledRowToPosRow $ _outflanks move1
+                outflanks0 = map filledRowToPosRow o0
+                outflanks1 = map filledRowToPosRow o1
             in
                 [ testCase "2 moves" $ 
                   length moves @?= 2
@@ -225,31 +209,39 @@ unitTests = testGroup "Unit tests" $
                     ]    
               ]
           ]
-    , testGroup "module GameState" $ 
+    , testGroup "module State" $ 
         let
-            playGameState1 = makePlayGameState
-            tagged1 = PlayState playGameState1
-            moves1 = possibleMoves tagged1
+            taggedState1 = Tagged_StartState makeStartState
+            moves1 = actual_NextMoves_FromTaggedState taggedState1
+            move1 = head moves1
 
-            tagged2 = applyMove (head moves1) playGameState1
-            moves2 = possibleMoves tagged2
-            (PlayState playGameState2) = tagged2
+            taggedState2 = applyMove move1 taggedState1
+            moves2 = actual_NextMoves_FromTaggedState taggedState2
+            move2 = head moves2
 
-            tagged3 = applyMove (head moves2) playGameState2
+            taggedState3 = applyMove move2 taggedState2
+            moves3 = actual_NextMoves_FromTaggedState taggedState3
+            move3 = head moves3
+
+            taggedState4 = applyMove move3 taggedState3          
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
 
-            display1 = gameStateDisplay Nothing tagged1
-            display2 = gameStateDisplay (Just numberedMovesWithPos1) tagged1
-            display3 = gameStateDisplay Nothing tagged2
-            display4 = gameStateDisplay (Just numberedMovesWithPos2) tagged2
+            display1 = gameStateDisplay Nothing taggedState1
+            display2 = gameStateDisplay (Just numberedMovesWithPos1) taggedState1
+            display3 = gameStateDisplay Nothing taggedState2
+            display4 = gameStateDisplay (Just numberedMovesWithPos2) taggedState2
 
-            (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
-            (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
-            (b3, w3) = blackAndWhiteUnusedDiskCounts tagged3
+            (b1, w1) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState1
+            (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
+            (b3, w3) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState3
 
-            (c1, c2, c3) = (nextToMove tagged1, nextToMove tagged2, nextToMove tagged3)
+            (Tagged_MidState (MidState priorMove2 _ _)) = taggedState2 -- if not midstate (due to bug), then raise exception which is fine
+            (Tagged_MidState (MidState priorMove3 _ _)) = taggedState3 -- if not midstate (due to bug), then raise exception which is fine
+            (Tagged_MidState (MidState priorMove4 _ _)) = taggedState4 -- if not midstate (due to bug), then raise exception which is fine
+
+            (c2, c3, c4) = (priorMoveColor priorMove2, priorMoveColor priorMove3, priorMoveColor priorMove4)
           in
               [ testCase "initial: gameStateDisplay Nothing" $ 
                 display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
@@ -272,68 +264,81 @@ unitTests = testGroup "Unit tests" $
               , testCase "unused disk counts after 2nd move (White)" $ 
                 (b3, w3) @?= (31, 31)  
 
-              , testCase "nextToMove for first 3 moves" $ 
-                (c1, c2, c3) @?= (Black, White, Black)                   
+              , testCase "priorMoveColor for first 3 states after initial state" $ 
+                (c2, c3, c4) @?= (Black, White, Black)    
+
+              -- , testCase "debug move1" $
+              --   show move1 @?= ""
+
+              -- , testCase "debug move2" $
+              --   show move2 @?= ""
+              
+              -- , testCase "debug move3" $
+              --   show move3 @?= ""                
+
+              -- , testCase "debug taggedState1" $
+              --   show taggedState1 @?= ""
+
+              -- , testCase "debug taggedState2" $
+              --   show taggedState2 @?= ""
+                
+              -- , testCase "debug taggedState3" $
+              --   show taggedState3 @?= ""
+              
+              -- , testCase "debug taggedState4" $
+              --   show taggedState4 @?= ""
+              
               , testGroup "Black uses very last disk on first move (contrived)" $
                   let
-                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+                      startState@(StartState c n (State b w board)) = makeStartState
+                      (tb, tw) = (BlackUnused b, WhiteUnused w)
+                      (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
-                      taggedB = BlackUnused b
-                      cB = countFrom taggedB
-                      (BlackUnused b') = iterate decreaseByOne taggedB !! (cB - 1) 
+                      (BlackUnused b') = iterate decreaseByOne tb !! (nb - 1) 
+                      (WhiteUnused w') = iterate decreaseByOne tw !! nw 
 
-                      taggedW = WhiteUnused w
-                      cW = countFrom taggedW
-                      (WhiteUnused w') = iterate decreaseByOne taggedW !! cW 
+                      taggedState1 = Tagged_StartState $ StartState c n $ State b' w' board
+                      moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      playGameState1 = PlayGameState $ (GameState n m b' w' board)
-                      tagged1 = PlayState playGameState1
-                      moves1 = possibleMoves tagged1
-
-                      tagged2 = applyMove (head moves1) playGameState1
-                      g = gameState tagged2
+                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
-                      [ testCase "first move results in: EndGameState NoUnusedDisksForBot" $ 
-                        tagged2 @?= (EndState $ EndGameState NoUnusedDisksForBoth g)
+                      [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
+                        endReason @?= NoUnusedDisksForBoth
                       ]
               , testGroup "Black on first move is confronted with full board (contrived)" $
                   let
-                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+                      (StartState c n (State b w board)) = makeStartState
 
                       board'= boardFromConfig [ (White,(i,j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
-                      playGameState1 = PlayGameState $ (GameState n m b w board')
-                      tagged1 = PlayState playGameState1
-                      move = Move Black (head $ emptySquares board') []
+                      taggedState1 = Tagged_StartState $ StartState c n $ State b w board'
+                      move = Move Black (head $ emptySquares board') $ Outflanks []
 
-                      tagged2 = applyMove move playGameState1
-                      g = gameState tagged2
+                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
-                      [ testCase "first move results in: EndGameState NoValidMoves" $ 
-                        tagged2 @?= (EndState $ EndGameState NoValidMoves g)
+                      [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
+                        endReason @?= NoValidMoves
                       ]
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
-                      (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+                      startState@(StartState c n (State b w board)) = makeStartState
+                      (tb, tw) = (BlackUnused b, WhiteUnused w)
+                      (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
-                      taggedW = WhiteUnused w
-                      cW = countFrom taggedW
-                      (WhiteUnused w') = iterate decreaseByOne taggedW !! cW 
+                      (WhiteUnused w') = iterate decreaseByOne tw !! nw
 
-                      playGameState1 = PlayGameState $ (GameState n m b w' board)
-                      tagged1 = PlayState playGameState1
-                      moves1 = possibleMoves tagged1
+                      taggedState1 = Tagged_StartState $ StartState c n $ State b w' board
+                      moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      tagged2 = applyMove (head moves1) playGameState1
-                      moves2 = possibleMoves tagged2
-                      (PlayState playGameState2) = tagged2
+                      taggedState2 = applyMove (head moves1) taggedState1
+                      moves2 = actual_NextMoves_FromTaggedState taggedState2
           
-                      tagged3 = applyMove (head moves2) playGameState2
+                      taggedState3 = applyMove (head moves2) taggedState2
 
-                      (b1, w1) = blackAndWhiteUnusedDiskCounts tagged1
-                      (b2, w2) = blackAndWhiteUnusedDiskCounts tagged2
+                      (b1, w1) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState1
+                      (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
                   in
-                      [ testCase "initial disk counts" $ 
+                      [ testCase "initial disk counts" $  
                         (b1, w1) @?= (32, 0) 
     
                       , testCase "Black after using disk for his first move, then transfers another to White -- prior to White's first move" $ 

@@ -5,59 +5,64 @@ module Engine
     where
 
 import System.Random  
-import Data.List ( sortOn )
+import Data.Tree.Game_tree.Negascout ( alpha_beta_search, negamax ) 
 
-import GameState ( PlayGameState(..), All_State(..), possibleMoves )
-import Board ( Move(..), FilledRow(..), movePos )
-import WeightingFactor ( WeightingFactor, highestWeight, mediumWeight, lowestWeight, isHighestWeight, isMediumWeight, isLowestWeight )
-import Position ( isCornerPos, isCornerNeighborPos )
+import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
+import Board ( Move, dummyMove )
+
 
 data Strategy 
-    = RandomStrategy
+    = RandomPick
     | SearchDepth_0
-    -- | SearchDepth_1
-    -- | SearchDepth_2
-    -- ... todo
+    | SearchDepth_1
+    | SearchDepth_2
+    | SearchDepth_3
+    | SearchDepth_4
         deriving (Eq, Show)
 
 
-computerChoose :: Strategy -> PlayGameState -> IO Move 
-computerChoose strat playGameState = do
-    let moves = possibleMoves $ PlayState playGameState 
+computerChoose :: Strategy -> Tagged_State -> IO Move 
+computerChoose strat taggedState = do
+    if isTaggedEndState taggedState then do -- should never get here
+        return dummyMove
+    else do
+        case strat of
+            RandomPick -> do 
+                gen <- getStdGen  
+                let moves = actual_NextMoves_FromTaggedState taggedState
+                let (randN, _) = randomR (0, length moves - 1) gen :: (Int, StdGen)
+                return $ moves !! randN
 
-    case strat of
-        RandomStrategy -> do
-            gen <- getStdGen  
-            let (randN, _) = randomR (0, length moves - 1) gen :: (Int, StdGen)
-            return $ moves !! randN
-
-        SearchDepth_0 -> do
-            return $ bestMove moves   
-
-
-bestMove :: [Move] -> Move
-bestMove moves = 
-    let
-        highest = maxFlipsSorted $ filter (\ x -> isHighestWeight $ weightingFactor x) moves
-        medium  = maxFlipsSorted $ filter (\ x -> isMediumWeight  $ weightingFactor x) moves
-        lowest  = maxFlipsSorted $ filter (\ x -> isLowestWeight  $ weightingFactor x) moves
-
-        sortedCandidates = lowest ++ medium ++ highest
-    in
-        last sortedCandidates
+            SearchDepth_0 -> return $ bestNextMove taggedState 0
+            SearchDepth_1 -> return $ bestNextMove taggedState 1
+            SearchDepth_2 -> return $ bestNextMove taggedState 2
+            SearchDepth_3 -> return $ bestNextMove taggedState 3
+            SearchDepth_4 -> return $ bestNextMove taggedState 4
 
 
-maxFlipsSorted :: [Move] -> [Move]            
-maxFlipsSorted moves = 
-    let
-        flipCount :: [FilledRow] -> Int
-        flipCount = \ filledRows -> sum $ map (\ (FilledRow xs) -> length xs) filledRows
-    in
-        sortOn (\ move -> flipCount $ _outflanks move) moves
+bestNextMove :: Tagged_State -> Int -> Move
+bestNextMove taggedState searchDepth =
+    if isTaggedEndState taggedState then -- should never get here
+        dummyMove
+    else
+        let
+            bestNextState :: Maybe Tagged_State -- play it safe 
+            bestNextState = 
+                let
+                    list = fst $ search taggedState searchDepth
+                in
+                    if null list then
+                        Nothing
+                    else
+                        Just $ last list -- todo or is it head?
+        in
+            case bestNextState of
+                Nothing                                                -> dummyMove
+                Just (Tagged_StartState _)                             -> dummyMove -- should never get here
+                Just (Tagged_MidState (MidState (PriorMove move) _ _)) -> move
+                Just (Tagged_EndState (EndState (PriorMove move) _ _)) -> move
 
 
-weightingFactor :: Move -> WeightingFactor
-weightingFactor move
-    | isCornerPos         $ movePos move = highestWeight
-    | isCornerNeighborPos $ movePos move = lowestWeight
-    | otherwise                          = mediumWeight
+search :: Tagged_State -> Int -> ([Tagged_State], Int)
+search taggedState searchDepth =
+    alpha_beta_search taggedState searchDepth

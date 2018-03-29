@@ -1,11 +1,11 @@
 module Sequencer
     ( moveSequence
     ) 
-    where
-
-import Player ( PlayerBlack, PlayerWhite, All_Player(..), playerTypeFrom, playerColor ) 
+    where 
+ 
+import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import GameState ( PlayGameState(..), All_State(..), applyMove, nextToMove, possibleMoves, board )
+import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState )
 import Board ( Move, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
@@ -13,67 +13,68 @@ import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStat
 import Engine ( computerChoose )
 import Lib ( getValidChoice )
 
- 
-moveSequence :: (PlayerBlack, PlayerWhite) -> PlayGameState -> IO ()
-moveSequence ps playGameState = do       
-    let taggedState = PlayState playGameState 
-    let taggedPlayer = playerNextToMove ps playGameState
+
+moveSequence :: (PlayerBlack, PlayerWhite) -> Tagged_State -> IO ()
+moveSequence players taggedState = do       
+    let taggedPlayer = nextPlayer players taggedState
     putStrLn ""
     putStrLn $ gameStateDisplay Nothing taggedState
 
     move <- case playerTypeFrom taggedPlayer of
         Person -> do
-            moveIndex <- personChoose (playerColor taggedPlayer) playGameState
-            return $ (possibleMoves taggedState) !! moveIndex
+            moveIndex <- personChoose (playerColor taggedPlayer) taggedState
+            return $ (actual_NextMoves_FromTaggedState taggedState) !! moveIndex
+
         Computer strategy -> do 
-            computerChoose strategy playGameState
+            computerChoose strategy taggedState
 
-    advance ps move playGameState
+    advance players move taggedState
+ 
 
+advance :: (PlayerBlack, PlayerWhite) -> Move -> Tagged_State -> IO ()
+advance players move taggedState = do    
+    let nextTaggedState = applyMove move taggedState
 
-advance :: (PlayerBlack, PlayerWhite) -> Move -> PlayGameState -> IO ()
-advance ps move playGameState = do    
-    let taggedState = applyMove move playGameState
+    case nextTaggedState of 
+        Tagged_StartState _ -> moveSequence players nextTaggedState -- should never get here
 
-    case taggedState of 
-        PlayState x ->
-            moveSequence ps x
+        Tagged_MidState _   -> moveSequence players nextTaggedState
 
-        EndState x -> do
-            putStrLn $ gameStateDisplay Nothing taggedState
+        Tagged_EndState x -> do
+            putStrLn $ gameStateDisplay Nothing nextTaggedState
             putStrLn ""
             putStrLn $ gameSummaryDisplay x
             putStrLn ""
             putStrLn "########################################"
             putStrLn "FYI, here are the flip-counts:\n"
-            putStrLn $ boardWithFlipCountDisplay $ board taggedState
+            putStrLn $ boardWithFlipCountDisplay $ board_FromTaggedState nextTaggedState
             putStrLn "########################################"
             return ()
 
 
-playerNextToMove :: (PlayerBlack, PlayerWhite) -> PlayGameState -> All_Player
-playerNextToMove (pb, pw) playGameState =
-    case nextToMove $ PlayState playGameState of
+nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
+nextPlayer (pb, pw) taggedState =
+    case nextMoveColor_FromTaggedState taggedState of
         Black -> BlackPlayerTag pb
         White -> WhitePlayerTag pw
 
 
-personChoose :: Color -> PlayGameState -> IO Int
-personChoose color playGameState = do
-    let moves = possibleMoves $ PlayState playGameState
+personChoose :: Color -> Tagged_State -> IO Int
+personChoose color taggedState = do
+    let moves = actual_NextMoves_FromTaggedState taggedState
     let numberedMovesWithPos = movePosChoices moves
-    n <- handlePersonChoose color numberedMovesWithPos moves playGameState
+    n <- handlePersonChoose color numberedMovesWithPos moves taggedState
     return n
 
 
-handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> PlayGameState -> IO Int
-handlePersonChoose color numberedMovesWithPos moves playGameState  = do
+handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> Tagged_State -> IO Int
+handlePersonChoose color numberedMovesWithPos moves taggedState  = do
     n <- getMoveChoice color numberedMovesWithPos
 
     if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn ""
-        putStrLn $ gameStateDisplay (Just numberedMovesWithPos) $ PlayState playGameState
-        handlePersonChoose color numberedMovesWithPos moves playGameState 
+        putStrLn $ gameStateDisplay (Just numberedMovesWithPos) taggedState
+        handlePersonChoose color numberedMovesWithPos moves taggedState 
     else do 
         return $ n - 1 -- index is zero-based
 

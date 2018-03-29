@@ -3,6 +3,7 @@ module Board
     , EmptySquare(..)
     , FilledSquare -- hiding constructor
     , Move(..)
+    , Outflanks(..)
     , FilledRow(..)
     , BoardSquare(..)
     , initialBoard
@@ -20,6 +21,10 @@ module Board
     , boardAt
     , boardRow
     , movePos
+    , flipCount
+    , dummyMove
+    , colorCount
+    , moveColor
     --, ################# flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
     where
@@ -36,11 +41,12 @@ import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
 import Lib ( mapTakeWhile ) 
 
-
+-- todo newtype RadiatingPosRows
 data EmptySquare = EmptySquare {_pos :: Position, _radiatingPosRows :: [PosRow]}
 
 data FilledSquare = FilledSquare Disk EmptySquare deriving (Eq)
 
+-- todo tagged nomenclature
 data BoardSquare 
     = Board_EmptySquare EmptySquare
     | Board_FilledSquare FilledSquare 
@@ -48,9 +54,11 @@ data BoardSquare
 
 newtype Board = Board (Array Position BoardSquare) deriving (Eq, Show)
 
-newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show) -- horiz, vert, diag
+data Move = Move Color EmptySquare Outflanks deriving (Eq, Show)
 
-data Move = Move {_color :: Color, _square :: EmptySquare,  _outflanks :: [FilledRow]} deriving (Eq, Show)
+newtype Outflanks = Outflanks [FilledRow] deriving (Eq, Show)
+
+newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show)
 
 ------------------
 
@@ -90,7 +98,7 @@ boardFromConfig config =
 
 
 initialBoard :: Board
-initialBoard =
+initialBoard = 
     boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo could constrain with smart pos
 
 
@@ -121,6 +129,12 @@ flipAt boardSquare board =
     case boardSquare of
         Board_EmptySquare _ -> board
         Board_FilledSquare (FilledSquare disk emptySquare) -> fillAt emptySquare (flipDisk disk) board
+
+
+flipCount :: Move -> Int
+flipCount (Move _ _ (Outflanks xs)) =
+    xs
+        & (\ filledRows -> sum $ map (\ (FilledRow ys) -> length ys) filledRows)
 
 
 toEmptySquare :: BoardSquare -> Maybe EmptySquare
@@ -218,9 +232,9 @@ squaresColored color xs =
     filter (\ x -> isSquareColored color x) xs
 
 
-colorCount :: Color -> [FilledSquare] -> Int
-colorCount color xs =
-    xs
+colorCount :: Color -> Board -> Int
+colorCount color board =
+    filledSquares board
         & squaresColored color
         & length
 
@@ -228,15 +242,18 @@ colorCount color xs =
 squaresColoredCount :: Board -> Map.Map Color Int
 squaresColoredCount board =
     let
-        xs = filledSquares board
-
         f :: Color -> Map.Map Color Int -> Map.Map Color Int
-        f = \ color m -> Map.insert color (colorCount color xs) m
+        f = \ color m -> Map.insert color (colorCount color board) m
     in
         Map.empty   
             & f Black
             & f White 
             
+
+moveColor :: Move -> Color
+moveColor (Move x _ _) =
+    x
+
 
 filledPositions :: Color -> Board -> [Position]
 filledPositions color board = 
@@ -252,11 +269,7 @@ validMove color emptySquare board =
         if null candidates then
             Nothing
         else
-            Just $ Move 
-                { _color = color
-                , _square = emptySquare
-                , _outflanks = candidates
-                }
+            Just $ Move color emptySquare $ Outflanks candidates
 
 
 validMoves :: Color -> Board -> [Move]
@@ -279,17 +292,22 @@ movePosChoices xs =
 
 
 applyBoardMove :: Move -> Board -> Board
-applyBoardMove move board =
+applyBoardMove (Move color emptySquare (Outflanks xs)) board =
     let
-        disk = makeDisk $ _color move
-        boardSquare = Board_EmptySquare $ _square move
+        disk = makeDisk color
+        boardSquare = Board_EmptySquare emptySquare
 
         flipOutflanks :: Board -> Board
         flipOutflanks board' =
-            _outflanks move
-                & concatMap (\ (FilledRow xs) -> xs)
-                & foldl' (\ acc x -> flipAt (Board_FilledSquare x) acc) board'
+            xs
+                & concatMap (\ (FilledRow ys) -> ys)
+                & foldl' (\ acc y -> flipAt (Board_FilledSquare y) acc) board'
     in
         board
             & place disk boardSquare
             & flipOutflanks
+
+
+dummyMove :: Move   
+dummyMove =
+    Move Black (EmptySquare (1,1) []) (Outflanks [])

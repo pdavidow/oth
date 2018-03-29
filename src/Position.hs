@@ -14,7 +14,7 @@ import BoardSize ( boardSize )
 
 type Position = ( Int, Int )
 
-newtype PosRow = PosRow [Position]  deriving (Eq, Show) -- horiz, vert, diag
+newtype PosRow = PosRow [Position] deriving (Eq, Show)
 
 data Dir = Inc | Dec
 

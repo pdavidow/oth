@@ -18,8 +18,9 @@ import Disk ( Disk, Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import GameState ( EndGameState, All_State, GameSummary(..), gameStateElems, gameSummary, winner )
-import SquareCount ( All_SquareCount(..), countFrom )
+import State ( State(..), EndState, Tagged_State, GameSummary(..), state_FromTaggedState, board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner )
+import SquareCount ( Tagged_SquareCount(..), countFrom )
+import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom )
 import Lib ( vSlice ) 
 
 
@@ -118,10 +119,10 @@ boardWithFlipCountDisplay b =
         boardWithSquareDisplay emptySquareContentsDisplay filledF b
         
 
-gameStateDisplay :: Maybe [(Int, Position)] -> All_State -> String
-gameStateDisplay mbShowMoves tagged =
+gameStateDisplay :: Maybe [(Int, Position)] -> Tagged_State -> String
+gameStateDisplay mbShowMoves taggedState =
     let
-        (_, _, b, w, bd) = gameStateElems tagged
+        (b, w) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState
         f = \ n char -> intersperse ' '  (replicate n $ char)
         blackUnused = "Black " ++ show b ++ ": " ++ (f b $ diskIconChar Black)        
         whiteUnused = "White " ++ show w ++ ": " ++ (f w $ diskIconChar White)
@@ -131,17 +132,19 @@ gameStateDisplay mbShowMoves tagged =
             blackUnused ++ "\n" ++
             whiteUnused
 
+        board = board_FromTaggedState taggedState
+
         boardString = 
             case mbShowMoves of
-                Just xs -> boardWithValidMovesDisplay xs bd
-                Nothing -> boardDisplay bd
+                Just xs -> boardWithValidMovesDisplay xs board
+                Nothing -> boardDisplay board
     in
         boardString ++ "\n\n" ++ footer   
 
 
-gameSummaryDisplay :: EndGameState -> String
+gameSummaryDisplay :: EndState -> String
 gameSummaryDisplay x =
     let 
         g@(GameSummary reason b w) = gameSummary x
     in
-        "GAME OVER (" ++ show reason ++ ") " ++ show (winner g) ++ ".  Disk-counts: Black " ++ show (countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (countFrom $ Tagged_WhiteSquareCount w)
+        "GAME OVER (" ++ show reason ++ ") " ++ show (winner g) ++ ".  Disk-counts: Black " ++ show (SquareCount.countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (SquareCount.countFrom $ Tagged_WhiteSquareCount w)
