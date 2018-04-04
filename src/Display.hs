@@ -1,26 +1,25 @@
 module Display
-    ( boardDisplay
-    , boardWithValidMovesDisplay
+    ( gameStateDisplay
+    , boardDisplay
     , boardWithFlipCountDisplay
-    , gameStateDisplay
     , movePosChoicesNomenclature
-    , diskIconChar
     , gameSummaryDisplay
     , colorAllCapsString
+    , showMoveNumInEmptySquare
     )
     where
 
 import Data.Function ( (&) )
 import Data.List ( find, intersperse ) 
+import Data.Maybe ( fromMaybe )
 
-import Board ( Board, BoardSquare(..), diskFrom, toPos, boardRow )
-import Disk ( Disk, Color(..), diskColor, _flipCount )
+import Board ( Board, EmptySquare(..), FilledSquare, BoardSquare(..), diskFrom, toPos, boardRow, movePos )
+import Disk ( Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import State ( State(..), EndState, Tagged_State, GameSummary(..), state_FromTaggedState, board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner )
+import State ( EndState, Tagged_State, GameSummary(..), EndReason(..), Winner(..), board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner, actual_mbPriorMove_FromTaggedState )
 import SquareCount ( Tagged_SquareCount(..), countFrom )
-import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom )
 import Lib ( vSlice ) 
 
 
@@ -37,22 +36,22 @@ movePosChoicesNomenclature xs =
         & concatMap (\ ((i, pos)) -> show i ++ ":" ++ posNomenclature pos ++ " ")
 
 
-squareDisplay :: (Position -> String) -> (Disk -> String) -> BoardSquare -> String
-squareDisplay emptyF filledF square =
+squareDisplay :: (EmptySquare -> String) -> (FilledSquare -> String) -> BoardSquare -> String
+squareDisplay f g square =
     case square of
-        Board_EmptySquare _ -> emptyF $ toPos square
-        Board_FilledSquare x -> filledF $ diskFrom x
+        Board_EmptySquare  x -> f x
+        Board_FilledSquare x -> g x
 
 
-boardWithSquareDisplay :: (Position -> String) -> (Disk -> String) -> Board -> String
-boardWithSquareDisplay emptyF filledF board =
+boardWithSquareDisplay :: (EmptySquare -> String) -> (FilledSquare -> String) -> Board -> String
+boardWithSquareDisplay f g board =
     let
         boardString = 
             [1 .. boardSize] 
                 & map 
                     ( \ i -> (show i ++ " ") ++ 
                         ( (vSlice ((i - 1) * boardSize) boardSize $ boardRow board)
-                            & concatMap (squareDisplay emptyF filledF)
+                            & concatMap (squareDisplay f g)
                         )
                     )
                 & intersperse ("\n\n")
@@ -75,76 +74,122 @@ defaultEmptySquareChar =
     '.'
 
 
-diskIconChar :: Color -> Char
-diskIconChar color =
+largeDiskIconChar :: Color -> Char
+largeDiskIconChar color =
     case color of
-        Black -> 'X' -- 'x'
-        White -> 'O' -- 'o'
+        Black -> 'X' 
+        White -> 'O'
 
 
-emptySquareContentsDisplay :: Position -> String
-emptySquareContentsDisplay _ = 
+smallDiskIconChar :: Color -> Char
+smallDiskIconChar color =
+    case color of
+        Black -> 'x'
+        White -> 'o'
+
+
+defaultDiskIconChar :: (Color -> Char)
+defaultDiskIconChar =
+    smallDiskIconChar
+
+
+highlightDiskIconChar :: (Color -> Char)
+highlightDiskIconChar =
+    largeDiskIconChar
+
+
+defaultEmptySquareContentsDisplay :: EmptySquare -> String
+defaultEmptySquareContentsDisplay _ = 
     padSquareContents [defaultEmptySquareChar]
 
 
-filledSquareContentsDisplay :: Disk -> String
-filledSquareContentsDisplay disk = 
-    padSquareContents [diskIconChar $ diskColor disk]
-
-
-boardDisplay :: Board -> String
-boardDisplay b =
-    boardWithSquareDisplay emptySquareContentsDisplay filledSquareContentsDisplay b
-
-
-boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
-boardWithValidMovesDisplay xs b =
-    let
-        emptyF :: Position -> String
-        emptyF = \ pos -> padSquareContents $
-            case find (\ ((_, pos')) -> pos == pos') xs of
-                Just (moveN, _) -> show moveN
-                Nothing -> [defaultEmptySquareChar]
-    in
-        boardWithSquareDisplay emptyF filledSquareContentsDisplay b
+defaultFilledSquareContentsDisplay :: FilledSquare -> String
+defaultFilledSquareContentsDisplay filledSquare = 
+    padSquareContents [defaultDiskIconChar $ diskColor $ diskFrom filledSquare]
 
 
 boardWithFlipCountDisplay :: Board -> String
-boardWithFlipCountDisplay b =
+boardWithFlipCountDisplay board =
     let
-        filledF :: Disk -> String
-        filledF disk = 
-            padSquareContents $ show $ _flipCount disk
+        filledF :: FilledSquare -> String
+        filledF filledSquare = 
+            padSquareContents $ show $ _flipCount $ diskFrom filledSquare
     in
-        boardWithSquareDisplay emptySquareContentsDisplay filledF b
+        boardWithSquareDisplay defaultEmptySquareContentsDisplay filledF board
         
+
+showMoveNumInEmptySquare :: [(Int, Position)] -> (EmptySquare -> String)
+showMoveNumInEmptySquare showMoves emptySquare =
+    padSquareContents $
+        case find (\ ((_, pos')) -> (toPos $ Board_EmptySquare emptySquare) == pos') showMoves of
+            Just (moveN, _) -> show moveN
+            Nothing         -> [defaultEmptySquareChar]
+
+
+highlightPriorMoveInFilledSquare :: Position -> (FilledSquare -> String)
+highlightPriorMoveInFilledSquare pos filledSquare =
+    let
+        color = diskColor $ diskFrom filledSquare
+        isPriorMove = (toPos $ Board_FilledSquare filledSquare) == pos
+
+        f = case isPriorMove of 
+            True  -> highlightDiskIconChar
+            False -> defaultDiskIconChar
+    in
+        padSquareContents [f color]
+
+
+boardDisplay :: Maybe (EmptySquare -> String) -> Maybe (FilledSquare -> String) -> Board -> String
+boardDisplay mbF mbG board =
+    boardWithSquareDisplay 
+        (fromMaybe defaultEmptySquareContentsDisplay mbF)
+        (fromMaybe defaultFilledSquareContentsDisplay mbG)
+        board
+
 
 gameStateDisplay :: Maybe [(Int, Position)] -> Tagged_State -> String
 gameStateDisplay mbShowMoves taggedState =
     let
+        mbEmptyF :: Maybe (EmptySquare -> String)
+        mbEmptyF = 
+            fmap showMoveNumInEmptySquare mbShowMoves
+
+        mbFilledF :: Maybe (FilledSquare -> String)
+        mbFilledF = 
+            fmap highlightPriorMoveInFilledSquare mbPriorMovePos
+                where mbPriorMovePos = fmap movePos (actual_mbPriorMove_FromTaggedState taggedState)
+
+        body = boardDisplay mbEmptyF mbFilledF $ board_FromTaggedState taggedState
+        footer = unusedDisksDisplay taggedState
+    in
+        body ++ "\n\n" ++ footer
+
+
+unusedDisksDisplay :: Tagged_State -> String
+unusedDisksDisplay taggedState =
+    let
         (b, w) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState
         f = \ n char -> intersperse ' '  (replicate n $ char)
-        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ diskIconChar Black)        
-        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ diskIconChar White)
 
-        footer = 
-            "Available Disks" ++ "\n" ++
-            blackUnused ++ "\n" ++
-            whiteUnused
-
-        board = board_FromTaggedState taggedState
-
-        boardString = 
-            case mbShowMoves of
-                Just xs -> boardWithValidMovesDisplay xs board
-                Nothing -> boardDisplay board
+        blackUnused = "Black " ++ show b ++ ": " ++ (f b $ defaultDiskIconChar Black)        
+        whiteUnused = "White " ++ show w ++ ": " ++ (f w $ defaultDiskIconChar White)
     in
-        boardString ++ "\n\n" ++ footer   
+        "Available Disks" ++ "\n" ++
+        blackUnused ++ "\n" ++
+        whiteUnused       
 
 
 gameSummaryDisplay :: EndState -> String
-gameSummaryDisplay x =
+gameSummaryDisplay endState =
     let 
-        g@(GameSummary reason b w) = gameSummary x
-    in
-        "GAME OVER (" ++ show reason ++ ") " ++ show (winner g) ++ ".  Disk-counts: Black " ++ show (SquareCount.countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (SquareCount.countFrom $ Tagged_WhiteSquareCount w)
+        g@(GameSummary reason b w) = gameSummary endState
+
+        reasonString = case reason of
+            NoUnusedDisksForBoth -> "No more available disks for either player"
+            NoValidMoves         -> "No more valid moves"
+
+        winnerString = case winner g of
+            WinnerColor color -> "Winner is " ++ (colorAllCapsString color)
+            Tie               -> "Tie game"
+    in 
+        "GAME OVER (" ++ reasonString ++ ") " ++ winnerString ++ ".  Disk-counts: Black " ++ show (SquareCount.countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (SquareCount.countFrom $ Tagged_WhiteSquareCount w)

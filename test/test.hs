@@ -15,7 +15,7 @@ import State ( State(..), StartState(..), MidState(..), EndState(..), Tagged_Sta
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position )
-import Display ( boardDisplay, boardWithValidMovesDisplay, boardWithFlipCountDisplay, gameStateDisplay )
+import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
 
 main = defaultMain tests
 
@@ -34,6 +34,14 @@ board_Figure2 =
         [ (White,(3,3)), (White,(3,7)), (White,(7,5)),
           (Black,(4,3)), (Black,(4,6)), (Black,(5,3)), (Black,(5,5)), (Black,(6,3)), (Black,(6,4)), (Black,(7,4))
         ]
+
+
+boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
+boardWithValidMovesDisplay showMoves board = 
+    boardDisplay 
+        (Just $ showMoveNumInEmptySquare showMoves)
+        Nothing
+        board
 
 
 unitTests = testGroup "Unit tests" $
@@ -56,14 +64,13 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
-          boardDisplay initialBoard @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
-          
+          boardDisplay Nothing Nothing initialBoard @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    o    x    .    .    .  \n\n5   .    .    .    x    o    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
 
         , testCase "boardWithValidMoves_DisplayString" $
-            let
-                board = initialBoard
-            in
-              boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
+          let
+              board = initialBoard
+          in
+              boardWithValidMovesDisplay (movePosChoices $ validMoves Black board) board @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    o    x    .    .    .  \n\n5   .    .    .    x    o    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  "
 
         , testGroup "validMoves Black initialBoard" $
             let
@@ -244,16 +251,16 @@ unitTests = testGroup "Unit tests" $
             (c2, c3, c4) = (priorMoveColor priorMove2, priorMoveColor priorMove3, priorMoveColor priorMove4)
           in
               [ testCase "initial: gameStateDisplay Nothing" $ 
-                display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    O    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    o    x    .    .    .  \n\n5   .    .    .    x    o    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\nWhite 32: o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o"
                 
               , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
-                display2 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    O    X    .    .    .  \n\n5   .    .    .    X    O    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display2 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    2    .    .    .    .  \n\n4   .    .    1    o    x    .    .    .  \n\n5   .    .    .    x    o    4    .    .  \n\n6   .    .    .    .    3    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 32: x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\nWhite 32: o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o"
 
               , testCase "After move C4: gameStateDisplay Nothing" $ 
-                display3 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    .    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display3 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    X    x    x    .    .    .  \n\n5   .    .    .    x    o    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\nWhite 32: o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o"
   
               , testCase "After move C4: gameStateDisplay (Just numberedMovesWithPos)" $ 
-                display4 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    1    .    3    .    .    .  \n\n4   .    .    X    X    X    .    .    .  \n\n5   .    .    2    X    O    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X X\nWhite 32: O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O O"
+                display4 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    1    .    3    .    .    .  \n\n4   .    .    X    x    x    .    .    .  \n\n5   .    .    2    x    o    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAvailable Disks\nBlack 31: x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\nWhite 32: o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o"
 
               , testCase "initial unused disk counts" $ 
                 (b1, w1) @?= (32, 32) 

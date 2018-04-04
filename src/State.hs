@@ -10,6 +10,7 @@ module State
     , NextMoves(..)
     , EndReason(..)
     , GameSummary(..)
+    , Winner(..)
     , makeStartState
     , priorMoveColor
     , nextMoveColor
@@ -20,8 +21,10 @@ module State
     , board_FromTaggedState 
     , state_FromTaggedState
     , nextMoveColor_FromTaggedState
+    , mbPriorMove_FromTaggedState
     , actual_NextMoves_FromTaggedState
     , actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState
+    , actual_mbPriorMove_FromTaggedState
     )   
     where
 
@@ -265,6 +268,20 @@ nextMoveColor_FromTaggedState taggedState =
         Tagged_MidState (MidState priorMove _ _) -> toggleColor $ priorMoveColor priorMove
         Tagged_EndState (EndState priorMove _ _) -> toggleColor $ priorMoveColor priorMove
         
+
+mbPriorMove_FromTaggedState :: Tagged_State -> Maybe PriorMove
+mbPriorMove_FromTaggedState taggedState =    
+    case taggedState of
+        Tagged_StartState _                      -> Nothing
+        Tagged_MidState (MidState priorMove _ _) -> Just priorMove
+        Tagged_EndState (EndState priorMove _ _) -> Just priorMove
+
+
+actual_mbPriorMove_FromTaggedState :: Tagged_State -> Maybe Move
+actual_mbPriorMove_FromTaggedState taggedState = 
+    mbPriorMove_FromTaggedState taggedState
+        & fmap (\ (PriorMove move) -> move) 
+
 
 actual_NextMoves_FromTaggedState :: Tagged_State -> [Move]
 actual_NextMoves_FromTaggedState taggedState =
