@@ -18,7 +18,7 @@ import Disk ( Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import State ( EndState, Tagged_State, GameSummary(..), EndReason(..), Winner(..), board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner, actual_mbPriorMove_FromTaggedState )
+import State ( EndState, Tagged_State, PriorMove(..), GameSummary(..), EndReason(..), Winner(..), board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner, mbPriorMove_FromTaggedState, actual_mbPriorMove_FromTaggedState, priorMoveColor )
 import SquareCount ( Tagged_SquareCount(..), countFrom )
 import Lib ( vSlice ) 
 
@@ -160,9 +160,27 @@ gameStateDisplay mbShowMoves taggedState =
                 where mbPriorMovePos = fmap movePos (actual_mbPriorMove_FromTaggedState taggedState)
 
         body = boardDisplay mbEmptyF mbFilledF $ board_FromTaggedState taggedState
-        footer = unusedDisksDisplay taggedState
+        footer = gameStateDisplayFooter taggedState
     in
         body ++ "\n\n" ++ footer
+
+
+gameStateDisplayFooter :: Tagged_State -> String
+gameStateDisplayFooter taggedState =
+    let
+        part1 = case mbPriorMove_FromTaggedState taggedState of
+            Just priorMove@(PriorMove move) ->
+                let
+                    color = priorMoveColor priorMove
+                    code = posNomenclature $ movePos move
+                in
+                    (colorAllCapsString color) ++ " moved to: " ++ code
+            Nothing -> 
+                "Awaiting your first move..."
+        
+        part2 = unusedDisksDisplay taggedState
+    in
+        part1 ++ "\n\n" ++ part2
 
 
 unusedDisksDisplay :: Tagged_State -> String
@@ -190,6 +208,6 @@ gameSummaryDisplay endState =
 
         winnerString = case winner g of
             WinnerColor color -> "Winner is " ++ (colorAllCapsString color)
-            Tie               -> "Tie game"
+            Tie               -> "TIE game"
     in 
         "GAME OVER (" ++ reasonString ++ ") " ++ winnerString ++ ".  Disk-counts: Black " ++ show (SquareCount.countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (SquareCount.countFrom $ Tagged_WhiteSquareCount w)

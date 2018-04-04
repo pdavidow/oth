@@ -262,11 +262,16 @@ state_FromTaggedState taggedState =
 
 
 nextMoveColor_FromTaggedState :: Tagged_State -> Color
-nextMoveColor_FromTaggedState taggedState =    
-    case taggedState of
-        Tagged_StartState (StartState color _ _) -> color
-        Tagged_MidState (MidState priorMove _ _) -> toggleColor $ priorMoveColor priorMove
-        Tagged_EndState (EndState priorMove _ _) -> toggleColor $ priorMoveColor priorMove
+nextMoveColor_FromTaggedState taggedState =  
+    let
+        priorMoveColorFrom :: PriorMove -> Color
+        priorMoveColorFrom priorMove = 
+            toggleColor $ priorMoveColor priorMove
+    in
+        case taggedState of
+            Tagged_StartState (StartState color _ _) -> color
+            Tagged_MidState (MidState priorMove _ _) -> priorMoveColorFrom priorMove
+            Tagged_EndState (EndState priorMove _ _) -> priorMoveColorFrom priorMove
         
 
 mbPriorMove_FromTaggedState :: Tagged_State -> Maybe PriorMove

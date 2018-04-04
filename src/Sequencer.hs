@@ -10,7 +10,7 @@ import Board ( Move, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
-import Engine ( computerChoose )
+import Engine ( computerChoose, stratDisplay )
 import Lib ( getValidChoice )
 
 
@@ -26,6 +26,7 @@ moveSequence players taggedState = do
             return $ (actual_NextMoves_FromTaggedState taggedState) !! moveIndex
 
         Computer strategy -> do 
+            putStrLn $ "\nComputer (White) is working (" ++ (stratDisplay strategy) ++ ") ...\n"
             computerChoose strategy taggedState
 
     advance players move taggedState
@@ -84,7 +85,7 @@ getMoveChoice color numberedMovesWithPos = do
     let posTags = Prelude.map fst numberedMovesWithPos
     let options = choiceNumberFor_DisplayChoicesOnBoard : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorAllCapsString color) ++ " Moves: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
     getValidChoice prompt options
 
 
