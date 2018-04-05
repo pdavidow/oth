@@ -1,17 +1,17 @@
 -- http://documentup.com/feuerbach/tasty
-
+ 
 import Test.Tasty
 import Test.Tasty.SmallCheck as SC
 import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
-
+ 
 import Data.Function ( (&) )
 import Data.List ( foldl' )
  
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt ) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
-import State ( State(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, nextMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, nextMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position )
@@ -216,7 +216,7 @@ unitTests = testGroup "Unit tests" $
                     ]    
               ]
           ]
-          
+
     , testGroup "module State" $ 
         let
             taggedState1 = Tagged_StartState makeStartState
@@ -277,14 +277,14 @@ unitTests = testGroup "Unit tests" $
               
               , testGroup "Black uses very last disk on first move (contrived)" $
                   let
-                      startState@(StartState c n (State b w board)) = makeStartState
+                      startState@(StartState c n (CoreState b w board)) = makeStartState
                       (tb, tw) = (BlackUnused b, WhiteUnused w)
                       (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
                       (BlackUnused b') = iterate decreaseByOne tb !! (nb - 1) 
                       (WhiteUnused w') = iterate decreaseByOne tw !! nw 
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ State b' w' board
+                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
                       (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
@@ -295,11 +295,11 @@ unitTests = testGroup "Unit tests" $
 
               , testGroup "Black on first move is confronted with full board (contrived)" $
                   let
-                      (StartState c n (State b w board)) = makeStartState
+                      (StartState c n (CoreState b w board)) = makeStartState
 
                       board'= boardFromConfig [ (White,(i,j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ State b w board'
+                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                       move = Move Black (head $ emptySquares board') $ Outflanks []
 
                       (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
@@ -310,13 +310,13 @@ unitTests = testGroup "Unit tests" $
 
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
-                      startState@(StartState c n (State b w board)) = makeStartState
+                      startState@(StartState c n (CoreState b w board)) = makeStartState
                       (tb, tw) = (BlackUnused b, WhiteUnused w)
                       (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
                       (WhiteUnused w') = iterate decreaseByOne tw !! nw
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ State b w' board
+                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
                       taggedState2 = applyMove (head moves1) taggedState1

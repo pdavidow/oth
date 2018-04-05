@@ -1,7 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
-
+ 
 module State
-    ( State(..)
+    ( CoreState(..)
     , StartState(..)
     , MidState(..)
     , EndState(..)
@@ -19,7 +19,7 @@ module State
     , gameSummary
     , winner
     , board_FromTaggedState 
-    , state_FromTaggedState
+    , coreState_FromTaggedState
     , nextMoveColor_FromTaggedState
     , mbPriorMove_FromTaggedState
     , actual_NextMoves_FromTaggedState
@@ -39,14 +39,13 @@ import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..),
 import Position ( isCornerPos, isCornerNeighborPos )
 
 
--- todo rename Core
-data State = State BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
+data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
 
-data StartState = StartState Color NextMoves State deriving (Eq, Show)
+data StartState = StartState Color NextMoves CoreState deriving (Eq, Show)
 
-data MidState = MidState PriorMove NextMoves State deriving (Eq, Show)
+data MidState = MidState PriorMove NextMoves CoreState deriving (Eq, Show)
 
-data EndState = EndState PriorMove EndReason State deriving (Eq, Show)
+data EndState = EndState PriorMove EndReason CoreState deriving (Eq, Show)
 
 data Tagged_State
     = Tagged_StartState StartState
@@ -99,7 +98,7 @@ instance Game_tree Tagged_State
                 Tagged_MidState (MidState (PriorMove move) _ _) -> 
                     cornerWeight move + flipCount move
 
-                Tagged_EndState (EndState priorMove _ (State _ _ board)) -> 
+                Tagged_EndState (EndState priorMove _ (CoreState _ _ board)) -> 
                     colorCount (priorMoveColor priorMove) board                            
 
 
@@ -117,7 +116,7 @@ makeStartState =
         board = initialBoard
         nextMoves = nextMovesFrom startColor board
     in -- todo rename init make ?
-        StartState startColor nextMoves (State initBlackUnusedDiskCount initWhiteUnusedDiskCount board)
+        StartState startColor nextMoves (CoreState initBlackUnusedDiskCount initWhiteUnusedDiskCount board)
 
 
 priorMoveColor :: PriorMove -> Color 
@@ -143,8 +142,8 @@ nextMovesFrom color board =
     NextMoves $ validMoves color board 
 
 
-isZeroUnusedDiskCount :: Color -> State -> Bool
-isZeroUnusedDiskCount color (State b w _) =
+isZeroUnusedDiskCount :: Color -> CoreState -> Bool
+isZeroUnusedDiskCount color (CoreState b w _) =
     case color of
         Black -> isZeroCount $ BlackUnused b
         White -> isZeroCount $ WhiteUnused w
@@ -156,7 +155,7 @@ applyMove move taggedState =
         makeMidState :: MidState
         makeMidState =
             let
-                (State b w board) = state_FromTaggedState taggedState
+                (CoreState b w board) = coreState_FromTaggedState taggedState
                 color = moveColor move
 
                 _map = decreaseByOneFor color b w -- for only one of them, whichever it is
@@ -166,7 +165,7 @@ applyMove move taggedState =
                 board' = applyBoardMove move board
                 nexts = nextMovesFrom (toggleColor color) board'
             in
-                MidState (PriorMove move) nexts (State b' w' board')
+                MidState (PriorMove move) nexts (CoreState b' w' board')
     in
         case taggedState of
             Tagged_StartState _ -> processMidState makeMidState
@@ -175,21 +174,21 @@ applyMove move taggedState =
 
 
 processMidState :: MidState -> Tagged_State
-processMidState midState@(MidState priorMove nexts@(NextMoves moves) state@(State b w board)) =
+processMidState midState@(MidState priorMove nexts@(NextMoves moves) coreState@(CoreState b w board)) =
     let
         priorColor = priorMoveColor priorMove
         nextColor = toggleColor priorColor
 
-        isZeroUnused_Prior = isZeroUnusedDiskCount priorColor state
-        isZeroUnused_Next  = isZeroUnusedDiskCount nextColor  state
+        isZeroUnused_Prior = isZeroUnusedDiskCount priorColor coreState
+        isZeroUnused_Next  = isZeroUnusedDiskCount nextColor  coreState
         
         end_NoValidMoves :: Tagged_State
         end_NoValidMoves = 
-            Tagged_EndState $ EndState priorMove NoValidMoves state
+            Tagged_EndState $ EndState priorMove NoValidMoves coreState
         
         end_NoUnusedDisksForBoth :: Tagged_State
         end_NoUnusedDisksForBoth = 
-            Tagged_EndState $ EndState priorMove NoUnusedDisksForBoth state
+            Tagged_EndState $ EndState priorMove NoUnusedDisksForBoth coreState
 
         transferDisk :: Tagged_State
         transferDisk = 
@@ -199,7 +198,7 @@ processMidState midState@(MidState priorMove nexts@(NextMoves moves) state@(Stat
                 (BlackUnused b') = _map Map.! Black
                 (WhiteUnused w') = _map Map.! White
             in
-                Tagged_MidState $ MidState priorMove nexts (State b' w' board)
+                Tagged_MidState $ MidState priorMove nexts (CoreState b' w' board)
 
         passThru :: Tagged_State
         passThru = 
@@ -232,7 +231,7 @@ winner (GameSummary _ b w) =
 
 
 gameSummary :: EndState -> GameSummary
-gameSummary (EndState _ reason (State _ _ board)) =
+gameSummary (EndState _ reason (CoreState _ _ board)) =
     let
         m = squaresColoredCount board
 
@@ -244,17 +243,17 @@ gameSummary (EndState _ reason (State _ _ board)) =
 
 board_FromTaggedState :: Tagged_State -> Board
 board_FromTaggedState taggedState =
-    x where (State _ _ x) = state_FromTaggedState taggedState
+    x where (CoreState _ _ x) = coreState_FromTaggedState taggedState
 
 
 blackAndWhiteUnusedDiskCounts_FromTaggedState :: Tagged_State -> (BlackUnusedDiskCount, WhiteUnusedDiskCount)
 blackAndWhiteUnusedDiskCounts_FromTaggedState taggedState =
     (b, w) 
-        where (State b w _) = state_FromTaggedState taggedState
+        where (CoreState b w _) = coreState_FromTaggedState taggedState
 
 
-state_FromTaggedState :: Tagged_State -> State
-state_FromTaggedState taggedState =
+coreState_FromTaggedState :: Tagged_State -> CoreState
+coreState_FromTaggedState taggedState =
     case taggedState of
         Tagged_StartState (StartState _ _ x) -> x
         Tagged_MidState (MidState _ _ x)     -> x
