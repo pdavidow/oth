@@ -42,8 +42,10 @@ import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
 import Lib ( mapTakeWhile ) 
 
--- todo newtype RadiatingPosRows
-data EmptySquare = EmptySquare {_pos :: Position, _radiatingPosRows :: [PosRow]}
+
+data EmptySquare = EmptySquare Position RadiatingPosRows
+
+newtype RadiatingPosRows = RadiatingPosRows [PosRow] deriving (Eq, Show)
 
 data FilledSquare = FilledSquare Disk EmptySquare deriving (Eq)
 
@@ -81,7 +83,7 @@ makeBoard =
     let
         makeElem :: Position -> BoardSquare
         makeElem pos =
-            Board_EmptySquare $ EmptySquare {_pos = pos, _radiatingPosRows = radiatingPosRows pos}
+            Board_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
     in
         Board $ array ((1,1), (boardSize,boardSize)) 
             [ ((i,j), makeElem (i,j)) | i <- [1..boardSize], j <- [1..boardSize] ]
@@ -211,8 +213,8 @@ contiguousFilledRow (PosRow ps) board =
 
 
 radiatingFilledRows :: EmptySquare -> Board -> [FilledRow]
-radiatingFilledRows emptySquare board = 
-    _radiatingPosRows emptySquare
+radiatingFilledRows (EmptySquare _ (RadiatingPosRows posRows)) board = 
+    posRows
         & map (\ posRow -> contiguousFilledRow posRow board)
         & filter (\ (FilledRow xs) -> not $ null xs)
 
@@ -322,4 +324,4 @@ applyBoardMove (Move color emptySquare (Outflanks xs)) board =
 
 dummyMove :: Move   
 dummyMove =
-    Move Black (EmptySquare (1,1) []) (Outflanks [])
+    Move Black (EmptySquare (1,1) $ RadiatingPosRows []) (Outflanks [])
