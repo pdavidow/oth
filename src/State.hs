@@ -33,7 +33,7 @@ import qualified Data.Map.Strict as Map ( (!) )
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves, flipCount, movePos, moveColor, colorCount ) 
-import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), initBlackUnusedDiskCount, initWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
+import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isCornerPos, isCornerNeighborPos )
 
@@ -114,8 +114,8 @@ makeStartState =
         startColor = Black -- Rule 1: Black always moves first.
         board = initialBoard
         nextMoves = nextMovesFrom startColor board
-    in -- todo rename init make ?
-        StartState startColor nextMoves (CoreState initBlackUnusedDiskCount initWhiteUnusedDiskCount board)
+    in
+        StartState startColor nextMoves (CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board)
 
 
 priorMoveColor :: PriorMove -> Color 

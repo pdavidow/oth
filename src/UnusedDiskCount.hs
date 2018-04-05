@@ -2,8 +2,8 @@ module UnusedDiskCount
     ( BlackUnusedDiskCount -- hiding constructor
     , WhiteUnusedDiskCount -- hiding constructor
     , Tagged_UnusedDiskCount(..)
-    , initBlackUnusedDiskCount
-    , initWhiteUnusedDiskCount 
+    , makeBlackUnusedDiskCount
+    , makeWhiteUnusedDiskCount 
     , decreaseByOne
     , isZeroCount
     , transferDiskTo
@@ -32,13 +32,13 @@ data Tagged_UnusedDiskCount
         deriving (Eq, Show)
 
 
-initBlackUnusedDiskCount :: BlackUnusedDiskCount 
-initBlackUnusedDiskCount =
+makeBlackUnusedDiskCount :: BlackUnusedDiskCount 
+makeBlackUnusedDiskCount =
     BlackUnusedDiskCount initUnusedDiskCount
 
 
-initWhiteUnusedDiskCount :: WhiteUnusedDiskCount 
-initWhiteUnusedDiskCount =
+makeWhiteUnusedDiskCount :: WhiteUnusedDiskCount 
+makeWhiteUnusedDiskCount =
     WhiteUnusedDiskCount initUnusedDiskCount
 
 
