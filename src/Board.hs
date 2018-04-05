@@ -25,6 +25,7 @@ module Board
     , dummyMove
     , colorCount
     , moveColor
+    , outflankPositions
     --, ################# flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
     where
@@ -132,9 +133,20 @@ flipAt boardSquare board =
 
 
 flipCount :: Move -> Int
-flipCount (Move _ _ (Outflanks xs)) =
+flipCount move =
+    length $ outflankSquares move
+
+
+outflankPositions :: Move -> [Position]    
+outflankPositions move =
+    outflankSquares move
+        & map (toPos . Board_FilledSquare)
+
+
+outflankSquares :: Move -> [FilledSquare]
+outflankSquares (Move _ _ (Outflanks xs)) =
     xs
-        & (\ filledRows -> sum $ map (\ (FilledRow ys) -> length ys) filledRows)
+        & (\ filledRows -> concatMap (\ (FilledRow ys) -> ys) filledRows)
 
 
 toEmptySquare :: BoardSquare -> Maybe EmptySquare

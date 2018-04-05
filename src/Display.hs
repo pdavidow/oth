@@ -13,7 +13,7 @@ import Data.Function ( (&) )
 import Data.List ( find, intersperse ) 
 import Data.Maybe ( fromMaybe )
 
-import Board ( Board, EmptySquare(..), FilledSquare, BoardSquare(..), diskFrom, toPos, boardRow, movePos )
+import Board ( Board, EmptySquare(..), FilledSquare, BoardSquare(..), Move, diskFrom, toPos, boardRow, movePos, outflankPositions )
 import Disk ( Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
@@ -62,10 +62,11 @@ boardWithSquareDisplay f g board =
 
 padSquareContents :: String -> String
 padSquareContents s = 
-    -- Assume: Square width is 5 chars, and contents are either of length 1 or 2
+    -- Assume: Square width is 5 chars
     case length s of
         1 -> "  " ++ s ++ "  "
         2 ->  " " ++ s ++ "  "
+        3 ->  " " ++ s ++ " "
         _ -> s
 
 
@@ -86,6 +87,16 @@ smallDiskIconChar color =
     case color of
         Black -> 'x'
         White -> 'o'
+
+
+priorMoveIndicatorChar :: Char
+priorMoveIndicatorChar =
+    '='
+
+
+flipIndicatorChar :: Char
+flipIndicatorChar =
+    '-'
 
 
 defaultDiskIconChar :: (Color -> Char)
@@ -126,17 +137,9 @@ showMoveNumInEmptySquare showMoves emptySquare =
             Nothing         -> [defaultEmptySquareChar]
 
 
-highlightPriorMoveInFilledSquare :: Position -> (FilledSquare -> String)
-highlightPriorMoveInFilledSquare pos filledSquare =
-    let
-        color = diskColor $ diskFrom filledSquare
-        isPriorMove = (toPos $ Board_FilledSquare filledSquare) == pos
-
-        f = case isPriorMove of 
-            True  -> highlightDiskIconChar
-            False -> defaultDiskIconChar
-    in
-        padSquareContents [f color]
+bracketIcon :: Char -> Char -> String
+bracketIcon bracket icon =
+    [bracket] ++ [icon] ++ [bracket]
 
 
 boardDisplay :: Maybe (EmptySquare -> String) -> Maybe (FilledSquare -> String) -> Board -> String
@@ -147,17 +150,37 @@ boardDisplay mbF mbG board =
         board
 
 
+mbFilledSquareDisplayer :: Tagged_State -> Maybe (FilledSquare -> String)
+mbFilledSquareDisplayer taggedState =
+    let
+        f :: Move -> (FilledSquare -> String)
+        f = \ priorMove filledSquare ->
+            let
+                color = diskColor $ diskFrom filledSquare
+
+                -- mutually exclusive by definition
+                isPriorMove = (toPos $ Board_FilledSquare filledSquare) == movePos priorMove
+                isFlipped = elem (toPos $ Board_FilledSquare filledSquare) $ outflankPositions priorMove
+            in
+                padSquareContents $ 
+                    if isPriorMove then
+                        bracketIcon priorMoveIndicatorChar $ highlightDiskIconChar color
+                    else if isFlipped then
+                        bracketIcon flipIndicatorChar $ defaultDiskIconChar color
+                    else
+                        [defaultDiskIconChar color]
+    in
+        fmap f $ actual_mbPriorMove_FromTaggedState taggedState
+
+
 gameStateDisplay :: Maybe [(Int, Position)] -> Tagged_State -> String
 gameStateDisplay mbShowMoves taggedState =
     let
         mbEmptyF :: Maybe (EmptySquare -> String)
-        mbEmptyF = 
-            fmap showMoveNumInEmptySquare mbShowMoves
+        mbEmptyF = fmap showMoveNumInEmptySquare mbShowMoves
 
         mbFilledF :: Maybe (FilledSquare -> String)
-        mbFilledF = 
-            fmap highlightPriorMoveInFilledSquare mbPriorMovePos
-                where mbPriorMovePos = fmap movePos (actual_mbPriorMove_FromTaggedState taggedState)
+        mbFilledF = mbFilledSquareDisplayer taggedState
 
         body = boardDisplay mbEmptyF mbFilledF $ board_FromTaggedState taggedState
         footer = gameStateDisplayFooter taggedState

@@ -12,7 +12,7 @@ import Data.Function ( (&) )
 
 import BoardSize ( boardSize )
 
-type Position = ( Int, Int )
+type Position = ( Int, Int ) -- todo make smart constrained?
 
 newtype PosRow = PosRow [Position] deriving (Eq, Show)
 
