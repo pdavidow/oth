@@ -8,10 +8,10 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
  
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- flipAt
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt ) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
-import State ( State(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, nextMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState)
+import State ( State(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, nextMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position )
@@ -216,6 +216,7 @@ unitTests = testGroup "Unit tests" $
                     ]    
               ]
           ]
+          
     , testGroup "module State" $ 
         let
             taggedState1 = Tagged_StartState makeStartState
@@ -273,27 +274,6 @@ unitTests = testGroup "Unit tests" $
 
               , testCase "priorMoveColor for first 3 states after initial state" $ 
                 (c2, c3, c4) @?= (Black, White, Black)    
-
-              -- , testCase "debug move1" $
-              --   show move1 @?= ""
-
-              -- , testCase "debug move2" $
-              --   show move2 @?= ""
-              
-              -- , testCase "debug move3" $
-              --   show move3 @?= ""                
-
-              -- , testCase "debug taggedState1" $
-              --   show taggedState1 @?= ""
-
-              -- , testCase "debug taggedState2" $
-              --   show taggedState2 @?= ""
-                
-              -- , testCase "debug taggedState3" $
-              --   show taggedState3 @?= ""
-              
-              -- , testCase "debug taggedState4" $
-              --   show taggedState4 @?= ""
               
               , testGroup "Black uses very last disk on first move (contrived)" $
                   let
@@ -312,6 +292,7 @@ unitTests = testGroup "Unit tests" $
                       [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
                         endReason @?= NoUnusedDisksForBoth
                       ]
+
               , testGroup "Black on first move is confronted with full board (contrived)" $
                   let
                       (StartState c n (State b w board)) = makeStartState
@@ -326,6 +307,7 @@ unitTests = testGroup "Unit tests" $
                       [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
                         endReason @?= NoValidMoves
                       ]
+
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
                       startState@(StartState c n (State b w board)) = makeStartState
@@ -356,7 +338,7 @@ unitTests = testGroup "Unit tests" $
               -------------------------------------------------------------------------------------------  
               -- , testGroup "Flip initial disks in progressive amounts, then boardWithFlipCountDisplay (contrived)" $
               --     let
-              --         (p@(PlayGameState (GameState n m b w board))) = makePlayGameState
+              --         board = board_FromTaggedState $ Tagged_StartState makeStartState
 
               --         f :: Position -> Board -> Board
               --         f = \ pos board -> flipAt (boardAt board pos) board
