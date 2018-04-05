@@ -56,8 +56,8 @@ advance players move taggedState = do
 nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
 nextPlayer (pb, pw) taggedState =
     case nextMoveColor_FromTaggedState taggedState of
-        Black -> BlackPlayerTag pb
-        White -> WhitePlayerTag pw
+        Black -> Tagged_PlayerBlack pb
+        White -> Tagged_PlayerWhite pw
 
 
 personChoose :: Color -> Tagged_State -> IO Int

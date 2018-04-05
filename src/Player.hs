@@ -17,10 +17,9 @@ data PlayerBlack = PlayerBlack PlayerType deriving (Eq, Show)
 
 data PlayerWhite = PlayerWhite PlayerType deriving (Eq, Show)
 
--- todo tagged nomen
 data Tagged_Player
-    = BlackPlayerTag PlayerBlack
-    | WhitePlayerTag PlayerWhite
+    = Tagged_PlayerBlack PlayerBlack
+    | Tagged_PlayerWhite PlayerWhite
         deriving (Eq, Show)
 
 
@@ -37,12 +36,12 @@ makePlayerWhite x =
 playerTypeFrom :: Tagged_Player -> PlayerType
 playerTypeFrom tagged =
     case tagged of
-        BlackPlayerTag (PlayerBlack x) -> x
-        WhitePlayerTag (PlayerWhite x) -> x
+        Tagged_PlayerBlack (PlayerBlack x) -> x
+        Tagged_PlayerWhite (PlayerWhite x) -> x
 
 
 playerColor :: Tagged_Player -> Color
 playerColor tagged =
     case tagged of
-        BlackPlayerTag _ -> Black
-        WhitePlayerTag _ -> White
+        Tagged_PlayerBlack _ -> Black
+        Tagged_PlayerWhite _ -> White
