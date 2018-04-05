@@ -1,7 +1,7 @@
 {-# LANGUAGE InstanceSigs #-}
  
 module State
-    ( CoreState(..)
+    ( CoreState(..) 
     , StartState(..)
     , MidState(..)
     , EndState(..)
@@ -138,8 +138,8 @@ nextMovesFrom color board =
 isZeroUnusedDiskCount :: Color -> CoreState -> Bool
 isZeroUnusedDiskCount color (CoreState b w _) =
     case color of
-        Black -> isZeroCount $ BlackUnused b
-        White -> isZeroCount $ WhiteUnused w
+        Black -> isZeroCount $ Tagged_BlackUnusedDiskCount b
+        White -> isZeroCount $ Tagged_WhiteUnusedDiskCount w
 
 
 applyMove :: Move -> Tagged_State -> Tagged_State
@@ -152,8 +152,8 @@ applyMove move taggedState =
                 color = moveColor move
 
                 _map = decreaseByOneFor color b w -- for only one of them, whichever it is
-                (BlackUnused b') = _map Map.! Black
-                (WhiteUnused w') = _map Map.! White
+                (Tagged_BlackUnusedDiskCount b') = _map Map.! Black
+                (Tagged_WhiteUnusedDiskCount w') = _map Map.! White
 
                 board' = applyBoardMove move board
                 nexts = nextMovesFrom (toggleColor color) board'
@@ -188,8 +188,8 @@ processMidState midState@(MidState priorMove nexts@(NextMoves moves) coreState@(
             let
                 _map = transferDiskTo nextColor b w
 
-                (BlackUnused b') = _map Map.! Black
-                (WhiteUnused w') = _map Map.! White
+                (Tagged_BlackUnusedDiskCount b') = _map Map.! Black
+                (Tagged_WhiteUnusedDiskCount w') = _map Map.! White
             in
                 Tagged_MidState $ MidState priorMove nexts (CoreState b' w' board)
 
@@ -290,5 +290,5 @@ actual_NextMoves_FromTaggedState taggedState =
     
 actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState :: Tagged_State -> (Int, Int)
 actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState =
-    (UnusedDiskCount.countFrom $ BlackUnused b, UnusedDiskCount.countFrom $ WhiteUnused w)
+    (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b, UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
         where (b, w) = blackAndWhiteUnusedDiskCounts_FromTaggedState taggedState

@@ -25,10 +25,9 @@ newtype BlackUnusedDiskCount = BlackUnusedDiskCount UnusedDiskCount deriving (Eq
 
 newtype WhiteUnusedDiskCount = WhiteUnusedDiskCount UnusedDiskCount deriving (Eq, Show)
 
--- todo reanem Tagged_
 data Tagged_UnusedDiskCount
-    = BlackUnused BlackUnusedDiskCount
-    | WhiteUnused WhiteUnusedDiskCount
+    = Tagged_BlackUnusedDiskCount BlackUnusedDiskCount
+    | Tagged_WhiteUnusedDiskCount WhiteUnusedDiskCount
         deriving (Eq, Show)
 
 
@@ -54,15 +53,15 @@ isZeroCount tagged =
         f = \ (UnusedDiskCount n) -> n == 0
     in
         case tagged of
-            BlackUnused (BlackUnusedDiskCount x) -> f x
-            WhiteUnused (WhiteUnusedDiskCount x) -> f x
+            Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount x) -> f x
+            Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount x) -> f x
             
 
 applyToCount :: (UnusedDiskCount -> UnusedDiskCount) -> Tagged_UnusedDiskCount -> Tagged_UnusedDiskCount
 applyToCount f tagged =
     case tagged of
-        BlackUnused (BlackUnusedDiskCount x) -> BlackUnused $ BlackUnusedDiskCount $ f x
-        WhiteUnused (WhiteUnusedDiskCount x) -> WhiteUnused $ WhiteUnusedDiskCount $ f x
+        Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount x) -> Tagged_BlackUnusedDiskCount $ BlackUnusedDiskCount $ f x
+        Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount x) -> Tagged_WhiteUnusedDiskCount $ WhiteUnusedDiskCount $ f x
 
 
 increaseByOne :: Tagged_UnusedDiskCount -> Tagged_UnusedDiskCount
@@ -82,8 +81,8 @@ transferDiskTo color b w =
     let
         (taggedB', taggedW') = 
             case color of
-                Black -> (increaseByOne $ BlackUnused b, decreaseByOne $ WhiteUnused w)
-                White -> (decreaseByOne $ BlackUnused b, increaseByOne $ WhiteUnused w)
+                Black -> (increaseByOne $ Tagged_BlackUnusedDiskCount b, decreaseByOne $ Tagged_WhiteUnusedDiskCount w)
+                White -> (decreaseByOne $ Tagged_BlackUnusedDiskCount b, increaseByOne $ Tagged_WhiteUnusedDiskCount w)
     in
         Map.empty
             & Map.insert Black taggedB'
@@ -95,8 +94,8 @@ decreaseByOneFor color b w =
     let
         (taggedB', taggedW') = 
             case color of
-                Black -> (decreaseByOne $ BlackUnused b, WhiteUnused w)
-                White -> (BlackUnused b                , decreaseByOne $ WhiteUnused w)
+                Black -> (decreaseByOne $ Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
+                White -> (Tagged_BlackUnusedDiskCount b                , decreaseByOne $ Tagged_WhiteUnusedDiskCount w)
     in
         Map.empty
             & Map.insert Black taggedB'
@@ -106,5 +105,5 @@ decreaseByOneFor color b w =
 countFrom :: Tagged_UnusedDiskCount -> Int
 countFrom tagged =
     case tagged of
-        BlackUnused (BlackUnusedDiskCount (UnusedDiskCount n)) -> n
-        WhiteUnused (WhiteUnusedDiskCount (UnusedDiskCount n)) -> n   
+        Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount (UnusedDiskCount n)) -> n
+        Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount (UnusedDiskCount n)) -> n   

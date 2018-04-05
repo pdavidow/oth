@@ -278,11 +278,11 @@ unitTests = testGroup "Unit tests" $
               , testGroup "Black uses very last disk on first move (contrived)" $
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
-                      (tb, tw) = (BlackUnused b, WhiteUnused w)
+                      (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
                       (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
-                      (BlackUnused b') = iterate decreaseByOne tb !! (nb - 1) 
-                      (WhiteUnused w') = iterate decreaseByOne tw !! nw 
+                      (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne tb !! (nb - 1) 
+                      (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
@@ -311,10 +311,10 @@ unitTests = testGroup "Unit tests" $
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
-                      (tb, tw) = (BlackUnused b, WhiteUnused w)
+                      (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
                       (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
-                      (WhiteUnused w') = iterate decreaseByOne tw !! nw
+                      (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
