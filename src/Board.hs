@@ -5,7 +5,7 @@ module Board
     , Move(..)
     , Outflanks(..)
     , FilledRow(..)
-    , BoardSquare(..)
+    , Tagged_Square(..)
     , initialBoard
     , validMoves
     , movePosChoices
@@ -26,7 +26,7 @@ module Board
     , colorCount
     , moveColor
     , outflankPositions
-    --, ################# flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
+    ------------------------------------------ ,flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
     where
 
@@ -49,13 +49,12 @@ newtype RadiatingPosRows = RadiatingPosRows [PosRow] deriving (Eq, Show)
 
 data FilledSquare = FilledSquare Disk EmptySquare deriving (Eq)
 
--- todo tagged nomenclature
-data BoardSquare 
-    = Board_EmptySquare EmptySquare
-    | Board_FilledSquare FilledSquare 
+data Tagged_Square 
+    = Tagged_EmptySquare EmptySquare
+    | Tagged_FilledSquare FilledSquare 
         deriving (Eq, Show)
 
-newtype Board = Board (Array Position BoardSquare) deriving (Eq, Show)
+newtype Board = Board (Array Position Tagged_Square) deriving (Eq, Show)
 
 data Move = Move Color EmptySquare Outflanks deriving (Eq, Show)
 
@@ -65,7 +64,7 @@ newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show)
 
 ------------------
 
-instance Eq EmptySquare where
+instance Eq EmptySquare where 
     (EmptySquare pos1 _) == (EmptySquare pos2 _) = pos1 == pos2 
 
 
@@ -81,9 +80,9 @@ instance Show FilledSquare where
 makeBoard :: Board
 makeBoard = 
     let
-        makeElem :: Position -> BoardSquare
+        makeElem :: Position -> Tagged_Square
         makeElem pos =
-            Board_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
+            Tagged_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
     in
         Board $ array ((1,1), (boardSize,boardSize)) 
             [ ((i,j), makeElem (i,j)) | i <- [1..boardSize], j <- [1..boardSize] ]
@@ -105,33 +104,33 @@ initialBoard =
     boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo could constrain with smart pos
 
 
-boardAt :: Board -> Position -> BoardSquare
+boardAt :: Board -> Position -> Tagged_Square
 boardAt (Board board) pos =
     board ! pos
 
             
-boardRow :: Board -> [BoardSquare]
+boardRow :: Board -> [Tagged_Square]
 boardRow (Board board) =
     elems board
 
 
-place :: Disk -> BoardSquare -> Board -> Board
-place disk boardSquare board = 
-    case boardSquare of
-        Board_EmptySquare emptySquare -> fillAt emptySquare disk board
-        Board_FilledSquare _ -> board
+place :: Disk -> Tagged_Square -> Board -> Board
+place disk taggedSquare board = 
+    case taggedSquare of
+        Tagged_EmptySquare emptySquare -> fillAt emptySquare disk board
+        Tagged_FilledSquare _ -> board
        
 
 fillAt :: EmptySquare -> Disk -> Board -> Board
 fillAt emptySquare@(EmptySquare pos _) disk (Board board) =
-    Board $ board // [(pos, Board_FilledSquare $ makeFilledSquare disk emptySquare)]
+    Board $ board // [(pos, Tagged_FilledSquare $ makeFilledSquare disk emptySquare)]
 
 
-flipAt :: BoardSquare -> Board -> Board
-flipAt boardSquare board =
-    case boardSquare of
-        Board_EmptySquare _ -> board
-        Board_FilledSquare (FilledSquare disk emptySquare) -> fillAt emptySquare (flipDisk disk) board
+flipAt :: Tagged_Square -> Board -> Board
+flipAt taggedSquare board =
+    case taggedSquare of
+        Tagged_EmptySquare _ -> board
+        Tagged_FilledSquare (FilledSquare disk emptySquare) -> fillAt emptySquare (flipDisk disk) board
 
 
 flipCount :: Move -> Int
@@ -142,7 +141,7 @@ flipCount move =
 outflankPositions :: Move -> [Position]    
 outflankPositions move =
     outflankSquares move
-        & map (toPos . Board_FilledSquare)
+        & map (toPos . Tagged_FilledSquare)
 
 
 outflankSquares :: Move -> [FilledSquare]
@@ -151,18 +150,18 @@ outflankSquares (Move _ _ (Outflanks xs)) =
         & (\ filledRows -> concatMap (\ (FilledRow ys) -> ys) filledRows)
 
 
-toEmptySquare :: BoardSquare -> Maybe EmptySquare
-toEmptySquare boardSquare =
-    case boardSquare of 
-        Board_EmptySquare x  -> Just x
-        Board_FilledSquare _ -> Nothing
+toEmptySquare :: Tagged_Square -> Maybe EmptySquare
+toEmptySquare taggedSquare =
+    case taggedSquare of 
+        Tagged_EmptySquare x  -> Just x
+        Tagged_FilledSquare _ -> Nothing
 
 
-toFilledSquare :: BoardSquare -> Maybe FilledSquare
-toFilledSquare boardSquare =
-    case boardSquare of 
-        Board_EmptySquare _  -> Nothing
-        Board_FilledSquare x -> Just x
+toFilledSquare :: Tagged_Square -> Maybe FilledSquare
+toFilledSquare taggedSquare =
+    case taggedSquare of 
+        Tagged_EmptySquare _  -> Nothing
+        Tagged_FilledSquare x -> Just x
  
         
 emptySquares :: Board -> [EmptySquare]
@@ -185,23 +184,23 @@ isSquareColored color (FilledSquare disk _) =
     color == diskColor disk
 
 
-isEmptySquare :: BoardSquare -> Bool
-isEmptySquare boardSquare =
-    case boardSquare of 
-        Board_EmptySquare _ -> True
-        Board_FilledSquare _ -> False
+isEmptySquare :: Tagged_Square -> Bool
+isEmptySquare taggedSquare =
+    case taggedSquare of 
+        Tagged_EmptySquare _ -> True
+        Tagged_FilledSquare _ -> False
 
 
-isFilledSquare :: BoardSquare -> Bool
-isFilledSquare boardSquare =
-    not $ isEmptySquare boardSquare
+isFilledSquare :: Tagged_Square -> Bool
+isFilledSquare taggedSquare =
+    not $ isEmptySquare taggedSquare
 
 
-toPos :: BoardSquare -> Position
-toPos boardSquare =
-    case boardSquare of 
-        Board_EmptySquare (EmptySquare pos _) -> pos
-        Board_FilledSquare (FilledSquare _ (EmptySquare pos _)) -> pos
+toPos :: Tagged_Square -> Position
+toPos taggedSquare =
+    case taggedSquare of 
+        Tagged_EmptySquare (EmptySquare pos _) -> pos
+        Tagged_FilledSquare (FilledSquare _ (EmptySquare pos _)) -> pos
 
 
 contiguousFilledRow :: PosRow -> Board -> FilledRow
@@ -229,9 +228,9 @@ outflanks color emptySquare board =
             where toggledColor = toggleColor color
 
 
-adjacentEmptySquares :: BoardSquare -> Board -> [EmptySquare]
-adjacentEmptySquares boardSquare board =
-    toPos boardSquare
+adjacentEmptySquares :: Tagged_Square -> Board -> [EmptySquare]
+adjacentEmptySquares taggedSquare board =
+    toPos taggedSquare
         & adjacentPositions
         & mapMaybe (\ pos -> toEmptySquare $ boardAt board pos)
 
@@ -272,7 +271,7 @@ moveColor (Move x _ _) =
 filledPositions :: Color -> Board -> [Position]
 filledPositions color board = 
     boardSquaresColored color board
-        & map (\ x -> toPos $ Board_FilledSquare x)
+        & map (\ x -> toPos $ Tagged_FilledSquare x)
 
 
 validMove :: Color -> EmptySquare -> Board -> Maybe Move
@@ -289,7 +288,7 @@ validMove color emptySquare board =
 validMoves :: Color -> Board -> [Move]
 validMoves color board =
       boardSquaresColored (toggleColor color) board
-        & concatMap (\ filledSquare -> adjacentEmptySquares (Board_FilledSquare filledSquare) board)
+        & concatMap (\ filledSquare -> adjacentEmptySquares (Tagged_FilledSquare filledSquare) board)
         & nub 
         & mapMaybe (\ emptySquare -> validMove color emptySquare board) 
          
@@ -309,16 +308,16 @@ applyBoardMove :: Move -> Board -> Board
 applyBoardMove (Move color emptySquare (Outflanks xs)) board =
     let
         disk = makeDisk color
-        boardSquare = Board_EmptySquare emptySquare
+        taggedSquare = Tagged_EmptySquare emptySquare
 
         flipOutflanks :: Board -> Board
         flipOutflanks board' =
             xs
                 & concatMap (\ (FilledRow ys) -> ys)
-                & foldl' (\ acc y -> flipAt (Board_FilledSquare y) acc) board'
+                & foldl' (\ acc y -> flipAt (Tagged_FilledSquare y) acc) board'
     in
         board
-            & place disk boardSquare
+            & place disk taggedSquare
             & flipOutflanks
 
 

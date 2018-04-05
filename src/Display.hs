@@ -4,7 +4,7 @@ module Display
     , boardWithFlipCountDisplay
     , movePosChoicesNomenclature
     , gameSummaryDisplay
-    , colorAllCapsString
+    , colorAllCapsString 
     , showMoveNumInEmptySquare
     )
     where
@@ -13,7 +13,7 @@ import Data.Function ( (&) )
 import Data.List ( find, intersperse ) 
 import Data.Maybe ( fromMaybe )
 
-import Board ( Board, EmptySquare(..), FilledSquare, BoardSquare(..), Move, diskFrom, toPos, boardRow, movePos, outflankPositions )
+import Board ( Board, EmptySquare(..), FilledSquare, Tagged_Square(..), Move, diskFrom, toPos, boardRow, movePos, outflankPositions )
 import Disk ( Color(..), diskColor, _flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
@@ -36,11 +36,11 @@ movePosChoicesNomenclature xs =
         & concatMap (\ ((i, pos)) -> show i ++ ":" ++ posNomenclature pos ++ " ")
 
 
-squareDisplay :: (EmptySquare -> String) -> (FilledSquare -> String) -> BoardSquare -> String
+squareDisplay :: (EmptySquare -> String) -> (FilledSquare -> String) -> Tagged_Square -> String
 squareDisplay f g square =
     case square of
-        Board_EmptySquare  x -> f x
-        Board_FilledSquare x -> g x
+        Tagged_EmptySquare  x -> f x
+        Tagged_FilledSquare x -> g x
 
 
 boardWithSquareDisplay :: (EmptySquare -> String) -> (FilledSquare -> String) -> Board -> String
@@ -132,7 +132,7 @@ boardWithFlipCountDisplay board =
 showMoveNumInEmptySquare :: [(Int, Position)] -> (EmptySquare -> String)
 showMoveNumInEmptySquare showMoves emptySquare =
     padSquareContents $
-        case find (\ ((_, pos')) -> (toPos $ Board_EmptySquare emptySquare) == pos') showMoves of
+        case find (\ ((_, pos')) -> (toPos $ Tagged_EmptySquare emptySquare) == pos') showMoves of
             Just (moveN, _) -> show moveN
             Nothing         -> [defaultEmptySquareChar]
 
@@ -159,8 +159,8 @@ mbFilledSquareDisplayer taggedState =
                 color = diskColor $ diskFrom filledSquare
 
                 -- mutually exclusive by definition
-                isPriorMove = (toPos $ Board_FilledSquare filledSquare) == movePos priorMove
-                isFlipped = elem (toPos $ Board_FilledSquare filledSquare) $ outflankPositions priorMove
+                isPriorMove = (toPos $ Tagged_FilledSquare filledSquare) == movePos priorMove
+                isFlipped = elem (toPos $ Tagged_FilledSquare filledSquare) $ outflankPositions priorMove
             in
                 padSquareContents $ 
                     if isPriorMove then

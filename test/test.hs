@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
  
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), BoardSquare(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt ) --, flipAt)
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- , flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), _flipCount )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
@@ -25,7 +25,7 @@ tests = testGroup "Tests" [unitTests]
 filledRowToPosRow :: FilledRow -> PosRow
 filledRowToPosRow (FilledRow xs) =
   PosRow $ xs
-      & map (\ x -> toPos $ Board_FilledSquare x)
+      & map (\ x -> toPos $ Tagged_FilledSquare x)
 
 
 board_Figure2 :: Board 
@@ -275,7 +275,7 @@ unitTests = testGroup "Unit tests" $
               , testCase "priorMoveColor for first 3 states after initial state" $ 
                 (c2, c3, c4) @?= (Black, White, Black)    
               
-              , testGroup "Black uses very last disk on first move (contrived)" $
+              , testGroup "Black uses very last disk on first move (contrived)" $ 
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
                       (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
@@ -344,7 +344,7 @@ unitTests = testGroup "Unit tests" $
               --         f = \ pos board -> flipAt (boardAt board pos) board
               
               --         board' = filledSquares board
-              --             & map (toPos . Board_FilledSquare)
+              --             & map (toPos . Tagged_FilledSquare)
               --             & zip [(1 :: Int)..]
               --             & foldl' (\ acc ((i, pos)) -> iterate (f pos) acc !! i ) board
               
