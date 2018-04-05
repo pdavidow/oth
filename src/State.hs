@@ -13,7 +13,6 @@ module State
     , Winner(..)
     , makeStartState
     , priorMoveColor
-    , nextMoveColor
     , applyMove
     , isTaggedEndState
     , gameSummary
@@ -122,12 +121,6 @@ makeStartState =
 priorMoveColor :: PriorMove -> Color 
 priorMoveColor (PriorMove (Move color _ _)) =
     color
-
-
---todo unused?
-nextMoveColor :: PriorMove -> Color 
-nextMoveColor x =
-    toggleColor $ priorMoveColor x
 
 
 isTaggedEndState :: Tagged_State -> Bool
