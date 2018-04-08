@@ -1,6 +1,6 @@
 module Display
     ( gameStateDisplay
-    , boardDisplay
+    , boardDisplay 
     , boardWithFlipCountDisplay
     , movePosChoicesNomenclature
     , gameSummaryDisplay
@@ -14,7 +14,7 @@ import Data.List ( find, intersperse )
 import Data.Maybe ( fromMaybe )
 
 import Board ( Board, EmptySquare(..), FilledSquare, Tagged_Square(..), Move, diskFrom, toPos, boardRow, movePos, outflankPositions )
-import Disk ( Color(..), diskColor, _flipCount )
+import Disk ( Color(..), diskColor, flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
@@ -124,7 +124,7 @@ boardWithFlipCountDisplay board =
     let
         filledF :: FilledSquare -> String
         filledF filledSquare = 
-            padSquareContents $ show $ _flipCount $ diskFrom filledSquare
+            padSquareContents $ show $ flipCount $ diskFrom filledSquare
     in
         boardWithSquareDisplay defaultEmptySquareContentsDisplay filledF board
         

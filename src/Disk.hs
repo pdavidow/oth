@@ -2,29 +2,33 @@ module Disk
     ( Disk -- hiding constructor
     , Color(..)
     , diskColor
-    , _flipCount
+    , flipCount
     , flipDisk
     , makeDisk
     , toggleColor
     )
     where
 
-data Disk = Disk {_initColor :: Color,  _flipCount :: Int} deriving (Eq, Show)
+data Disk = Disk InitColor FlipCount deriving (Eq, Show)
+
+newtype InitColor = InitColor Color deriving (Eq, Show)
+
+newtype FlipCount = FlipCount Int deriving (Eq, Show)
 
 data Color = Black | White deriving (Eq, Ord, Show)
 
 
 makeDisk :: Color -> Disk
 makeDisk color = 
-    Disk {_initColor = color,  _flipCount = 0}
+    Disk (InitColor color) (FlipCount 0)
 
 
 diskColor :: Disk -> Color
-diskColor disk =
-    if even $ _flipCount disk then
-        _initColor disk
-    else
-        toggleColor $ _initColor disk
+diskColor (Disk (InitColor color) (FlipCount count)) =
+    if even count then 
+        color
+    else 
+        toggleColor color
 
 
 toggleColor :: Color -> Color
@@ -35,5 +39,10 @@ toggleColor color =
      
 
 flipDisk :: Disk -> Disk
-flipDisk (Disk initColor_dontTouch flipCount) =
-    Disk initColor_dontTouch $ flipCount + 1       
+flipDisk (Disk initColor (FlipCount count)) =
+    Disk initColor $ FlipCount $ count + 1       
+
+
+flipCount :: Disk -> Int
+flipCount (Disk _ (FlipCount x)) =
+    x

@@ -8,9 +8,9 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
  
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) -- , flipAt)
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
-import Disk ( Color(..), _flipCount )
+import Disk ( Color(..), flipCount )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
@@ -331,7 +331,7 @@ unitTests = testGroup "Unit tests" $
                         (b1, w1) @?= (32, 0) 
     
                       , testCase "Black after using disk for his first move, then transfers another to White -- prior to White's first move" $ 
-                        (b2, w2) @?= (30, 1)  
+                        (b2, w2) @?= (30, 1)   
                       ]   
               -------------------------------------------------------------------------------------------                        
               -- to test this section, temp uncomment out -- but need to expose normally unexposed Board.flipAt       
@@ -349,7 +349,7 @@ unitTests = testGroup "Unit tests" $
               --             & foldl' (\ acc ((i, pos)) -> iterate (f pos) acc !! i ) board
               
               --         flippedCounts = filledSquares board'
-              --             & map (\ x -> _flipCount $ diskFrom x)
+              --             & map (\ x -> flipCount $ diskFrom x)
               --     in
               --         [ testCase "(verify test logic)" $ 
               --           flippedCounts @?= [1,2,3,4]
