@@ -86,9 +86,9 @@ instance Game_tree Tagged_State
         let
             cornerWeight :: Move -> Int
             cornerWeight move
-                | isCornerPos         $ movePos move = 10
-                | isCornerNeighborPos $ movePos move =  0
-                | otherwise                          =  5
+                | isCornerPos         $ movePos move =  1000
+                | isCornerNeighborPos $ movePos move =     0
+                | otherwise                          =   500
         in
             case taggedState of
                 Tagged_StartState _  -> 
@@ -98,7 +98,19 @@ instance Game_tree Tagged_State
                     cornerWeight move + flipCount move
 
                 Tagged_EndState (EndState priorMove _ (CoreState _ _ board)) -> 
-                    colorCount (priorMoveColor priorMove) board                            
+                    let
+                        myColor = priorMoveColor priorMove
+                        opColor = toggleColor myColor
+
+                        myColorCount = colorCount myColor board
+                        opColorCount = colorCount opColor board
+                    in
+                        if myColorCount == opColorCount then
+                            500
+                        else if myColorCount > opColorCount then
+                            100000
+                        else
+                            0
 
 
     children :: Tagged_State -> [Tagged_State]
