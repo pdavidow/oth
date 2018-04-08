@@ -9,6 +9,7 @@ module Engine
 
 import System.Random  
 import Data.Tree.Game_tree.Negascout ( alpha_beta_search ) 
+import Safe ( headMay, tailMay )
 
 import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
 import Board ( Move, dummyMove )
@@ -73,15 +74,12 @@ bestNextMove taggedState searchDepth =
         dummyMove
     else
         let
-            bestNextState :: Maybe Tagged_State -- play it safe 
+            bestNextState :: Maybe Tagged_State 
             bestNextState = 
                 let
                     list = fst $ search taggedState searchDepth
                 in
-                    if null list then
-                        Nothing
-                    else
-                        Just $ head $ tail list 
+                    (return list) >>= tailMay >>= headMay
         in
             case bestNextState of
                 Nothing                                                -> dummyMove
