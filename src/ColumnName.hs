@@ -7,7 +7,7 @@ module ColumnName
 import Data.Ix as Ix ( Ix, range )
 import Safe ( atDef )
 
-import Position ( Position )
+import Position ( Position, posCoords )
 
 
 -- can be auto-generated with Template-Haskell
@@ -35,5 +35,6 @@ columnIndexRange =
 
 
 posNomenclature :: Position -> String
-posNomenclature (i, j) =
+posNomenclature pos = 
     show (atDef firstColumnIndex columnIndexRange (j - 1)) ++ (show i)
+        where (i,j) = posCoords pos

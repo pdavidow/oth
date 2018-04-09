@@ -14,7 +14,7 @@ import Disk ( Color(..), flipCount )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
-import Position ( Position )
+import Position ( Position, makeSomePosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
 
 main = defaultMain tests
@@ -30,10 +30,18 @@ filledRowToPosRow (FilledRow xs) =
 
 board_Figure2 :: Board 
 board_Figure2 =
-    boardFromConfig 
-        [ (White,(3,3)), (White,(3,7)), (White,(7,5)),
-          (Black,(4,3)), (Black,(4,6)), (Black,(5,3)), (Black,(5,5)), (Black,(6,3)), (Black,(6,4)), (Black,(7,4))
-        ]
+  boardFromConfig 
+    [ (White, (makeSomePosition 3 3))
+    , (White, (makeSomePosition 3 7))
+    , (White, (makeSomePosition 7 5))
+    , (Black, (makeSomePosition 4 3))
+    , (Black, (makeSomePosition 4 6))
+    , (Black, (makeSomePosition 5 3))
+    , (Black, (makeSomePosition 5 5))
+    , (Black, (makeSomePosition 6 3))
+    , (Black, (makeSomePosition 6 4))
+    , (Black, (makeSomePosition 7 4))
+    ]
 
 
 boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
@@ -46,21 +54,175 @@ boardWithValidMovesDisplay showMoves board =
 
 unitTests = testGroup "Unit tests" $
     [ testGroup "module Position" $
-        [ testCase "radiatingPosRows (1,1)" $
-          radiatingPosRows (1,1)  @?= [PosRow [(2,1),(3,1),(4,1),(5,1),(6,1),(7,1),(8,1)], PosRow [(1,2),(1,3),(1,4),(1,5),(1,6),(1,7),(1,8)], PosRow [(2,2),(3,3),(4,4),(5,5),(6,6),(7,7),(8,8)]]
+        [ testCase "radiatingPosRows (Position 1 1)" $
+            radiatingPosRows (makeSomePosition 1 1)  @?= 
+                [ PosRow 
+                    [ (makeSomePosition 2 1)
+                    , (makeSomePosition 3 1)
+                    , (makeSomePosition 4 1)
+                    , (makeSomePosition 5 1)
+                    , (makeSomePosition 6 1) 
+                    , (makeSomePosition 7 1)
+                    , (makeSomePosition 8 1)
+                    ]
+                , PosRow 
+                    [ (makeSomePosition 1 2)
+                    , (makeSomePosition 1 3)
+                    , (makeSomePosition 1 4)
+                    , (makeSomePosition 1 5)
+                    , (makeSomePosition 1 6)
+                    , (makeSomePosition 1 7)
+                    , (makeSomePosition 1 8)
+                    ]
+                , PosRow 
+                    [ (makeSomePosition 2 2)
+                    , (makeSomePosition 3 3)
+                    , (makeSomePosition 4 4)
+                    , (makeSomePosition 5 5)
+                    , (makeSomePosition 6 6)
+                    , (makeSomePosition 7 7)
+                    , (makeSomePosition 8 8)
+                    ]
+                ]
 
-        , testCase "radiatingPosRows (1,8)" $
-          radiatingPosRows (1,8)  @?= [PosRow [(2,8),(3,8),(4,8),(5,8),(6,8),(7,8),(8,8)], PosRow [(1,7),(1,6),(1,5),(1,4),(1,3),(1,2),(1,1)], PosRow [(2,7),(3,6),(4,5),(5,4),(6,3),(7,2),(8,1)]]
+        , testCase "radiatingPosRows (Position 1 8)" $
+            radiatingPosRows (makeSomePosition 1 8)  @?= 
+              [ PosRow 
+                  [ (makeSomePosition 2 8)
+                  , (makeSomePosition 3 8)
+                  , (makeSomePosition 4 8)
+                  , (makeSomePosition 5 8)
+                  , (makeSomePosition 6 8) 
+                  , (makeSomePosition 7 8)
+                  , (makeSomePosition 8 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 1 7)
+                  , (makeSomePosition 1 6)
+                  , (makeSomePosition 1 5)
+                  , (makeSomePosition 1 4)
+                  , (makeSomePosition 1 3)
+                  , (makeSomePosition 1 2)
+                  , (makeSomePosition 1 1)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 2 7)
+                  , (makeSomePosition 3 6)
+                  , (makeSomePosition 4 5)
+                  , (makeSomePosition 5 4)
+                  , (makeSomePosition 6 3)
+                  , (makeSomePosition 7 2)
+                  , (makeSomePosition 8 1)
+                  ]
+              ]
 
-        , testCase "radiatingPosRows (8,8)" $
-          radiatingPosRows (8,8)  @?= [PosRow [(7,8),(6,8),(5,8),(4,8),(3,8),(2,8),(1,8)], PosRow [(8,7),(8,6),(8,5),(8,4),(8,3),(8,2),(8,1)], PosRow [(7,7),(6,6),(5,5),(4,4),(3,3),(2,2),(1,1)]]
+        , testCase "radiatingPosRows (Position 8 8)" $
+            radiatingPosRows (makeSomePosition 8 8)  @?= 
+              [ PosRow 
+                  [ (makeSomePosition 7 8)
+                  , (makeSomePosition 6 8)
+                  , (makeSomePosition 5 8)
+                  , (makeSomePosition 4 8)
+                  , (makeSomePosition 3 8) 
+                  , (makeSomePosition 2 8)
+                  , (makeSomePosition 1 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 8 7)
+                  , (makeSomePosition 8 6)
+                  , (makeSomePosition 8 5)
+                  , (makeSomePosition 8 4)
+                  , (makeSomePosition 8 3)
+                  , (makeSomePosition 8 2)
+                  , (makeSomePosition 8 1)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 7 7)
+                  , (makeSomePosition 6 6)
+                  , (makeSomePosition 5 5)
+                  , (makeSomePosition 4 4)
+                  , (makeSomePosition 3 3)
+                  , (makeSomePosition 2 2)
+                  , (makeSomePosition 1 1)
+                  ]
+              ]
 
-        , testCase "radiatingPosRows (8,1)" $
-          radiatingPosRows (8,1)  @?= [PosRow [(7,1),(6,1),(5,1),(4,1),(3,1),(2,1),(1,1)], PosRow [(8,2),(8,3),(8,4),(8,5),(8,6),(8,7),(8,8)], PosRow [(7,2),(6,3),(5,4),(4,5),(3,6),(2,7),(1,8)]]
+        , testCase "radiatingPosRows (Position 8 1)" $
+            radiatingPosRows (makeSomePosition 8 1)  @?= 
+              [ PosRow 
+                  [ (makeSomePosition 7 1)
+                  , (makeSomePosition 6 1)
+                  , (makeSomePosition 5 1)
+                  , (makeSomePosition 4 1)
+                  , (makeSomePosition 3 1) 
+                  , (makeSomePosition 2 1)
+                  , (makeSomePosition 1 1)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 8 2)
+                  , (makeSomePosition 8 3)
+                  , (makeSomePosition 8 4)
+                  , (makeSomePosition 8 5)
+                  , (makeSomePosition 8 6)
+                  , (makeSomePosition 8 7)
+                  , (makeSomePosition 8 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 7 2)
+                  , (makeSomePosition 6 3)
+                  , (makeSomePosition 5 4)
+                  , (makeSomePosition 4 5)
+                  , (makeSomePosition 3 6)
+                  , (makeSomePosition 2 7)
+                  , (makeSomePosition 1 8)
+                  ]
+              ]
 
-        , testCase "radiatingPosRows Black (5,6)" $
-          radiatingPosRows (5,6)  @?= [PosRow [(4,6),(3,6),(2,6),(1,6)], PosRow [(6,6),(7,6),(8,6)], PosRow [(5,7),(5,8)], PosRow [(5,5),(5,4),(5,3),(5,2),(5,1)], PosRow [(4,7),(3,8)], PosRow [(4,5),(3,4),(2,3),(1,2)], PosRow [(6,7),(7,8)], PosRow [(6,5),(7,4),(8,3)]]
-        ]
+        , testCase "radiatingPosRows Black (Position 5 6)" $
+            radiatingPosRows (makeSomePosition 5 6)  @?= 
+              [ PosRow 
+                  [ (makeSomePosition 4 6)
+                  , (makeSomePosition 3 6)
+                  , (makeSomePosition 2 6)
+                  , (makeSomePosition 1 6)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 6 6)
+                  , (makeSomePosition 7 6)
+                  , (makeSomePosition 8 6)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 5 7)
+                  , (makeSomePosition 5 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 5 5)
+                  , (makeSomePosition 5 4)
+                  , (makeSomePosition 5 3)
+                  , (makeSomePosition 5 2)
+                  , (makeSomePosition 5 1)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 4 7)
+                  , (makeSomePosition 3 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 4 5)
+                  , (makeSomePosition 3 4)
+                  , (makeSomePosition 2 3)
+                  , (makeSomePosition 1 2)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 6 7)
+                  , (makeSomePosition 7 8)
+                  ]
+              , PosRow 
+                  [ (makeSomePosition 6 5)
+                  , (makeSomePosition 7 4)
+                  , (makeSomePosition 8 3)
+                  ]
+              ]
+          ]
 
     , testGroup "module Board" $       
         [ testCase "board_DisplayString initialBoard" $
@@ -90,28 +252,28 @@ unitTests = testGroup "Unit tests" $
                   length moves @?= 4
 
                 , testCase "move 0" $
-                  pos0 @?= (4,3)
+                  posCoords pos0 @?= (4,3)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(4,4)]] 
+                  outflanks0 @?= [PosRow [(makeSomePosition 4 4)]] 
 
                 , testCase "move 1" $
-                  pos1 @?= (3,4)     
+                  posCoords pos1 @?= (3,4)     
 
                 , testCase "outflanks 1" $
-                  outflanks1 @?= [PosRow [(4,4)]]                   
+                  outflanks1 @?= [PosRow [(makeSomePosition 4 4)]]                   
 
                 , testCase "move 2" $
-                  pos2 @?= (6,5)    
+                  posCoords pos2 @?= (6,5)    
 
                 , testCase "outflanks 2" $
-                  outflanks2 @?= [PosRow [(5,5)]]                        
+                  outflanks2 @?= [PosRow [(makeSomePosition 5 5)]]                        
 
                 , testCase "move 3" $
-                  pos3 @?= (5,6)           
+                  posCoords pos3 @?= (5,6)           
 
                 , testCase "outflanks 3" $
-                  outflanks3 @?= [PosRow [(5,5)]]                                                                        
+                  outflanks3 @?= [PosRow [(makeSomePosition 5 5)]]                                                                        
                 ]
 
         , testGroup "validMoves Black board_Figure2" $
@@ -132,28 +294,28 @@ unitTests = testGroup "Unit tests" $
                   length moves @?= 4
 
                 , testCase "move 0" $
-                  pos0 @?= (2,3)
+                  posCoords pos0 @?= (2,3)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(3,3)]] 
+                  outflanks0 @?= [PosRow [(makeSomePosition 3 3)]] 
 
                 , testCase "move 1" $
-                  pos1 @?= (2,8)     
+                  posCoords pos1 @?= (2,8)     
 
                 , testCase "outflanks 1" $
-                  outflanks1 @?= [PosRow [(3,7)]]                   
+                  outflanks1 @?= [PosRow [(makeSomePosition 3 7)]]                   
 
                 , testCase "move 2" $
-                  pos2 @?= (7,6)    
+                  posCoords pos2 @?= (7,6)    
 
                 , testCase "outflanks 2" $
-                  outflanks2 @?= [PosRow [(7,5)]]                        
+                  outflanks2 @?= [PosRow [(makeSomePosition 7 5)]]                        
 
                 , testCase "move 3" $
-                  pos3 @?= (8,6)           
+                  posCoords pos3 @?= (8,6)           
 
                 , testCase "outflanks 3" $
-                  outflanks3 @?= [PosRow [(7,5)]]                                                                        
+                  outflanks3 @?= [PosRow [(makeSomePosition 7 5)]]                                                                        
                 ]   
 
         , testGroup "validMoves White board_Figure2" $
@@ -170,19 +332,19 @@ unitTests = testGroup "Unit tests" $
                   length moves @?= 2
 
                 , testCase "move 0" $
-                  pos0 @?= (4,2)
+                  posCoords pos0 @?= (4,2)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(5,3), (6,4)]] 
+                  outflanks0 @?= [PosRow [(makeSomePosition 5 3), (makeSomePosition 6 4)]] 
 
                 , testCase "move 1" $
-                  pos1 @?= (7,3)     
+                  posCoords pos1 @?= (7,3)     
 
                 , testCase "outflanks 1" $
                   outflanks1 @?= 
-                      [ PosRow [(6,3), (5,3), (4,3)]
-                      , PosRow [(7,4)]
-                      , PosRow [(6,4), (5,5), (4,6)]
+                      [ PosRow [(makeSomePosition 6 3), (makeSomePosition 5 3), (makeSomePosition 4 3)]
+                      , PosRow [(makeSomePosition 7 4)]
+                      , PosRow [(makeSomePosition 6 4), (makeSomePosition 5 5), (makeSomePosition 4 6)]
                       ]                                                                                      
                 ]  
 
@@ -195,10 +357,23 @@ unitTests = testGroup "Unit tests" $
                   boardAfter = applyBoardMove move0 boardBefore
                 in
                     [ testCase "white positions" $ 
-                      filledPositions White boardAfter @?= [(3,3), (3,7), (4,2), (5,3), (6,4), (7,5)]
+                        filledPositions White boardAfter @?= 
+                            [ (makeSomePosition 3 3)
+                            , (makeSomePosition 3 7)
+                            , (makeSomePosition 4 2)
+                            , (makeSomePosition 5 3)
+                            , (makeSomePosition 6 4)
+                            , (makeSomePosition 7 5)
+                            ]
 
                     , testCase "black positions" $
-                      filledPositions Black boardAfter @?= [(4,3), (4,6), (5,5), (6,3), (7,4)]                                                                                   
+                        filledPositions Black boardAfter @?= 
+                            [ (makeSomePosition 4 3)
+                            , (makeSomePosition 4 6)
+                            , (makeSomePosition 5 5)
+                            , (makeSomePosition 6 3)
+                            , (makeSomePosition 7 4)
+                            ]                                                                                   
                     ]  
 
             , testGroup "move1" $
@@ -209,7 +384,19 @@ unitTests = testGroup "Unit tests" $
                     boardAfter = applyBoardMove move1 boardBefore
                 in
                     [ testCase "white positions" $ 
-                      filledPositions White boardAfter @?= [(3,3), (3,7), (4,3), (4,6), (5,3), (5,5), (6,3), (6,4), (7,3), (7,4), (7,5)]
+                        filledPositions White boardAfter @?= 
+                            [ (makeSomePosition 3 3)
+                            , (makeSomePosition 3 7)
+                            , (makeSomePosition 4 3)
+                            , (makeSomePosition 4 6)
+                            , (makeSomePosition 5 3)
+                            , (makeSomePosition 5 5)
+                            , (makeSomePosition 6 3)
+                            , (makeSomePosition 6 4)
+                            , (makeSomePosition 7 3)
+                            , (makeSomePosition 7 4)
+                            , (makeSomePosition 7 5)
+                            ]
 
                     , testCase "black positions" $
                       filledPositions Black boardAfter @?= []                                                                                   
@@ -297,7 +484,7 @@ unitTests = testGroup "Unit tests" $
                   let
                       (StartState c n (CoreState b w board)) = makeStartState
 
-                      board'= boardFromConfig [ (White,(i,j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                      board'= boardFromConfig [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                       move = Move Black (head $ emptySquares board') $ Outflanks []

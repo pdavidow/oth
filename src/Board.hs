@@ -40,9 +40,9 @@ import Safe ( headMay, tailMay )
 
 import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
-import Position ( Position, PosRow(..), adjacentPositions, radiatingPosRows )
+import Position ( Position, PosRow(..), makeSomePosition, adjacentPositions, posCoords, radiatingPosRows )
 import Lib ( mapTakeWhile ) 
-
+ 
 
 data EmptySquare = EmptySquare Position RadiatingPosRows
 
@@ -55,7 +55,7 @@ data Tagged_Square
     | Tagged_FilledSquare FilledSquare 
         deriving (Eq, Show)
 
-newtype Board = Board (Array Position Tagged_Square) deriving (Eq, Show)
+newtype Board = Board (Array (Int, Int) Tagged_Square) deriving (Eq, Show)
 
 data Move = Move Color EmptySquare Outflanks deriving (Eq, Show)
 
@@ -81,9 +81,10 @@ instance Show FilledSquare where
 makeBoard :: Board
 makeBoard = 
     let
-        makeElem :: Position -> Tagged_Square
-        makeElem pos =
+        makeElem :: (Int, Int) -> Tagged_Square
+        makeElem (i,j) =
             Tagged_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
+                where pos = makeSomePosition i j
     in
         Board $ array ((1,1), (boardSize,boardSize)) 
             [ ((i,j), makeElem (i,j)) | i <- [1..boardSize], j <- [1..boardSize] ]
@@ -102,12 +103,17 @@ boardFromConfig config =
 
 initialBoard :: Board
 initialBoard = 
-    boardFromConfig [(White,(4,4)), (White,(5,5)), (Black,(4,5)), (Black,(5,4))] -- needs to accomodate boardSize, of course. todo could constrain with smart pos
+    boardFromConfig 
+        [ (White, (makeSomePosition 4 4))
+        , (White, (makeSomePosition 5 5))
+        , (Black, (makeSomePosition 4 5))
+        , (Black, (makeSomePosition 5 4))
+        ]
 
 
 boardAt :: Board -> Position -> Tagged_Square
 boardAt (Board board) pos =
-    board ! pos
+    board ! posCoords pos
 
             
 boardRow :: Board -> [Tagged_Square]
@@ -124,7 +130,7 @@ place disk taggedSquare board =
 
 fillAt :: EmptySquare -> Disk -> Board -> Board
 fillAt emptySquare@(EmptySquare pos _) disk (Board board) =
-    Board $ board // [(pos, Tagged_FilledSquare $ makeFilledSquare disk emptySquare)]
+    Board $ board // [(posCoords pos, Tagged_FilledSquare $ makeFilledSquare disk emptySquare)]
 
 
 flipAt :: Tagged_Square -> Board -> Board
@@ -330,4 +336,4 @@ applyBoardMove (Move color emptySquare (Outflanks xs)) board =
 
 dummyMove :: Move   
 dummyMove =
-    Move Black (EmptySquare (1,1) $ RadiatingPosRows []) (Outflanks [])
+    Move Black (EmptySquare (makeSomePosition 1 1) $ RadiatingPosRows []) (Outflanks [])

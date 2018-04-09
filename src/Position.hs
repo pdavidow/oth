@@ -1,6 +1,9 @@
 module Position
     ( Position -- hiding constructor
     , PosRow(..)
+    , makePosition
+    , makeSomePosition
+    , posCoords
     , adjacentPositions
     , radiatingPosRows
     , isCornerPos
@@ -9,18 +12,44 @@ module Position
     where
 
 import Data.Function ( (&) )
+import Data.Maybe ( fromMaybe )
 
 import BoardSize ( boardSize )
 
-type Position = ( Int, Int ) -- todo make smart constrained?
+
+data Position = Position Int Int deriving (Eq, Show) -- one-based
 
 newtype PosRow = PosRow [Position] deriving (Eq, Show)
 
 data Dir = Inc | Dec
 
 
+makePosition :: Monad m => Int -> Int -> m Position
+makePosition i j =
+    let
+        isValidParam :: Int -> Bool
+        isValidParam = \x -> x >= 1 && x <= boardSize
+
+        sizeString = show boardSize
+    in
+        if isValidParam i && isValidParam j then
+            return $ Position i j
+        else
+            fail $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
+
+
+makeSomePosition :: Int -> Int -> Position
+makeSomePosition i j =
+    fromMaybe (Position 1 1) $ makePosition i j
+
+
+posCoords :: Position -> (Int, Int)
+posCoords (Position i j) = 
+    (i, j)
+
+
 isCornerPos :: Position -> Bool
-isCornerPos (i,j) =
+isCornerPos (Position i j) =
     f i && f j
         where f = \x -> x == 1 || x == boardSize
 
@@ -34,34 +63,34 @@ isCornerNeighborPos pos =
     
 
 isCornerNeighborPos_UpperLeft :: Position -> Bool
-isCornerNeighborPos_UpperLeft (1,2) = True
-isCornerNeighborPos_UpperLeft (2,2) = True
-isCornerNeighborPos_UpperLeft (2,1) = True
-isCornerNeighborPos_UpperLeft (_,_) = False
+isCornerNeighborPos_UpperLeft (Position 1 2) = True
+isCornerNeighborPos_UpperLeft (Position 2 2) = True
+isCornerNeighborPos_UpperLeft (Position 2 1) = True
+isCornerNeighborPos_UpperLeft (Position _ _) = False
 
 
 isCornerNeighborPos_UpperRight :: Position -> Bool
-isCornerNeighborPos_UpperRight (1,j) = (j == boardSize - 1)
-isCornerNeighborPos_UpperRight (2,j) = (j == boardSize - 1) || (j == boardSize)
-isCornerNeighborPos_UpperRight (_,_) = False
+isCornerNeighborPos_UpperRight (Position 1 j) = (j == boardSize - 1)
+isCornerNeighborPos_UpperRight (Position 2 j) = (j == boardSize - 1) || (j == boardSize)
+isCornerNeighborPos_UpperRight (Position _ _) = False
 
 
 isCornerNeighborPos_LowerRight :: Position -> Bool
-isCornerNeighborPos_LowerRight (i,j) = 
+isCornerNeighborPos_LowerRight (Position i j) = 
     ((i == boardSize - 1) && (j == boardSize - 1)) ||
     ((i == boardSize - 1) && (j == boardSize))     ||
     ((i == boardSize)     && (j == boardSize - 1))
 
 
 isCornerNeighborPos_LowerLeft :: Position -> Bool
-isCornerNeighborPos_LowerLeft (7,1) = True
-isCornerNeighborPos_LowerLeft (7,2) = True
-isCornerNeighborPos_LowerLeft (8,2) = True
-isCornerNeighborPos_LowerLeft (_,_) = False
+isCornerNeighborPos_LowerLeft (Position 7 1) = True
+isCornerNeighborPos_LowerLeft (Position 7 2) = True
+isCornerNeighborPos_LowerLeft (Position 8 2) = True
+isCornerNeighborPos_LowerLeft (Position _ _) = False
 
 
 adjacentPositions :: Position -> [Position]
-adjacentPositions (i, j) =
+adjacentPositions (Position i j) =
     let
         candidates = 
             [ (i-1, j-1), (i, j-1), (i+1, j-1)
@@ -73,6 +102,7 @@ adjacentPositions (i, j) =
     in
         candidates
             & filter (\ (i', j') -> isInRange i' && isInRange j') 
+            & map (\ (i', j') -> Position i' j')
 
 
 radiatingPosRows :: Position -> [PosRow] 
@@ -97,47 +127,47 @@ radiatingPosRows pos =
 
 
 rowVertUp :: Position -> PosRow
-rowVertUp (i, j) =   
-    PosRow $ [ (i',j') | i' <- reverse [1..(i-1)], j' <- [j] ]
+rowVertUp (Position i j) =   
+    PosRow $ [ Position i' j' | i' <- reverse [1..(i-1)], j' <- [j] ]
 
 
 rowVertDown :: Position -> PosRow
-rowVertDown (i, j) =   
-    PosRow $ [ (i',j') | i' <- [(i+1)..boardSize], j' <- [j] ]
+rowVertDown (Position i j) =   
+    PosRow $ [ Position i' j' | i' <- [(i+1)..boardSize], j' <- [j] ]
 
 
 rowHorizRight :: Position -> PosRow
-rowHorizRight (i, j) =   
-    PosRow $ [ (i',j') | i' <- [i], j' <- [(j+1)..boardSize] ]
+rowHorizRight (Position i j) =   
+    PosRow $ [ Position i' j' | i' <- [i], j' <- [(j+1)..boardSize] ]
 
 
 rowHorizLeft :: Position -> PosRow
-rowHorizLeft (i, j) =   
-    PosRow $ [ (i',j') | i' <- [i], j' <- reverse [1..(j-1)] ]
+rowHorizLeft (Position i j) =   
+    PosRow $ [ Position i' j' | i' <- [i], j' <- reverse [1..(j-1)] ]
         
 
 rowDiagUpRight :: Position -> PosRow
-rowDiagUpRight (i, j) =  
-    rowDiag Dec Inc (i-1, j+1)
+rowDiagUpRight (Position i j) =  
+    rowDiag Dec Inc $ Position (i-1) (j+1)
 
 
 rowDiagUpLeft :: Position -> PosRow
-rowDiagUpLeft (i, j) = 
-    rowDiag Dec Dec (i-1, j-1)
+rowDiagUpLeft (Position i j) = 
+    rowDiag Dec Dec $ Position (i-1) (j-1)  
 
 
 rowDiagDownRight :: Position -> PosRow
-rowDiagDownRight (i, j) = 
-    rowDiag Inc Inc (i+1, j+1)
+rowDiagDownRight (Position i j) = 
+    rowDiag Inc Inc $ Position (i+1) (j+1) 
 
 
 rowDiagDownLeft :: Position -> PosRow
-rowDiagDownLeft (i, j) =
-    rowDiag Inc Dec (i+1, j-1)
+rowDiagDownLeft (Position i j) =
+    rowDiag Inc Dec $ Position (i+1) (j-1) 
 
 
 rowDiag :: Dir -> Dir -> Position -> PosRow
-rowDiag horizDir vertDir (i,j) =
+rowDiag horizDir vertDir (Position i j) =
     let
         isExceededLimits :: Int -> Int -> Bool
         isExceededLimits = \ x y -> 
@@ -161,6 +191,6 @@ rowDiag horizDir vertDir (i,j) =
                     x' = f horizDir x
                     y' = f vertDir y
                 in 
-                    go (result ++ [(x, y)]) x' y'
+                    go (result ++ [Position x y]) x' y'
     in
         PosRow $ go [] i j
