@@ -3,10 +3,12 @@ module Sequencer
     ) 
     where 
  
+import Safe ( atDef )
+
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
 import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState )
-import Board ( Move, movePosChoices )
+import Board ( Move, dummyMove, movePosChoices )
 import Disk ( Color(..) )
 import Position ( Position )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
@@ -23,7 +25,7 @@ moveSequence players taggedState = do
     move <- case playerTypeFrom taggedPlayer of
         Person -> do
             moveIndex <- personChoose (playerColor taggedPlayer) taggedState
-            return $ (actual_NextMoves_FromTaggedState taggedState) !! moveIndex
+            return $ atDef dummyMove (actual_NextMoves_FromTaggedState taggedState) moveIndex
 
         Computer strategy -> do 
             putStrLn $ "\nComputer (White) is working (" ++ (stratDisplay strategy) ++ ") ...\n"

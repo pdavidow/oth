@@ -5,6 +5,8 @@ module ColumnName
     where
 
 import Data.Ix as Ix ( Ix, range )
+import Safe ( atDef )
+
 import Position ( Position )
 
 
@@ -34,4 +36,4 @@ columnIndexRange =
 
 posNomenclature :: Position -> String
 posNomenclature (i, j) =
-    show (columnIndexRange !! (j - 1)) ++ (show i)
+    show (atDef firstColumnIndex columnIndexRange (j - 1)) ++ (show i)

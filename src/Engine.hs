@@ -9,7 +9,7 @@ module Engine
 
 import System.Random  
 import Data.Tree.Game_tree.Negascout ( alpha_beta_search ) 
-import Safe ( headMay, tailMay )
+import Safe ( atDef, headMay, tailMay )
 
 import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
 import Board ( Move, dummyMove )
@@ -45,6 +45,7 @@ stratDisplay strat =
         SearchDepth_9  -> "searching 9 levels deep"
         SearchDepth_10 -> "searching 10 levels deep"
 
+        
 computerChoose :: Strategy -> Tagged_State -> IO Move 
 computerChoose strat taggedState = do
     if isTaggedEndState taggedState then do -- should never get here
@@ -55,7 +56,7 @@ computerChoose strat taggedState = do
                 gen <- getStdGen  
                 let moves = actual_NextMoves_FromTaggedState taggedState
                 let (randN, _) = randomR (0, length moves - 1) gen :: (Int, StdGen)
-                return $ moves !! randN
+                return $ atDef dummyMove moves randN
 
             SearchDepth_1  -> return $ bestNextMove taggedState 1
             SearchDepth_2  -> return $ bestNextMove taggedState 2
