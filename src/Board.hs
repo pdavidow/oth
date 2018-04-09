@@ -36,6 +36,7 @@ import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
 import qualified Data.Map.Strict as Map ( Map, empty, insert )
+import Safe ( headMay, tailMay )
 
 import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
@@ -211,21 +212,27 @@ contiguousFilledRow (PosRow ps) board =
         & FilledRow
 
 
-radiatingFilledRows :: EmptySquare -> Board -> [FilledRow]
-radiatingFilledRows (EmptySquare _ (RadiatingPosRows posRows)) board = 
+outflanks :: Color -> EmptySquare -> Board -> [FilledRow]
+outflanks color (EmptySquare _ (RadiatingPosRows posRows)) board =
     posRows
         & map (\ posRow -> contiguousFilledRow posRow board)
-        & filter (\ (FilledRow xs) -> not $ null xs)
-
-
-outflanks :: Color -> EmptySquare -> Board -> [FilledRow]
-outflanks color emptySquare board =
-    radiatingFilledRows emptySquare board
-        & filter (\ (FilledRow row) -> length row >= 2) -- plus ensures safe head & tail
-        & filter (\ (FilledRow row) -> isSquareColored toggledColor $ head row)  
-        & filter (\ (FilledRow row) -> any (\ x -> isSquareColored color x) $ tail row)
-        & map (\ (FilledRow row) -> FilledRow $ takeWhile (\ x -> isSquareColored toggledColor x) row)
+        & filter (\ filledRow -> isHeadColored toggledColor filledRow && isTailHaveAnyColor color filledRow)
+        & map (\ (FilledRow xs) -> FilledRow $ takeWhile (\ x -> isSquareColored toggledColor x) xs)
             where toggledColor = toggleColor color
+
+
+isHeadColored :: Color -> FilledRow -> Bool
+isHeadColored color (FilledRow row) =
+    case headMay row of
+        Just square -> isSquareColored color square
+        Nothing -> False
+
+
+isTailHaveAnyColor :: Color -> FilledRow -> Bool
+isTailHaveAnyColor color (FilledRow row) =
+    case tailMay row of
+        Just squares -> any (isSquareColored color) squares
+        Nothing -> False
 
 
 adjacentEmptySquares :: Tagged_Square -> Board -> [EmptySquare]

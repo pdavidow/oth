@@ -68,6 +68,7 @@ computerChoose strat taggedState = do
             SearchDepth_9  -> return $ bestNextMove taggedState 9
             SearchDepth_10 -> return $ bestNextMove taggedState 10
 
+            
 bestNextMove :: Tagged_State -> Int -> Move
 bestNextMove taggedState searchDepth =
     if isTaggedEndState taggedState then -- should never get here
@@ -76,18 +77,11 @@ bestNextMove taggedState searchDepth =
         let
             bestNextState :: Maybe Tagged_State 
             bestNextState = 
-                let
-                    list = fst $ search taggedState searchDepth
-                in
-                    (return list) >>= tailMay >>= headMay
+                (return $ fst $ alpha_beta_search taggedState searchDepth) 
+                    >>= tailMay >>= headMay
         in
             case bestNextState of
                 Nothing                                                -> dummyMove
                 Just (Tagged_StartState _)                             -> dummyMove -- should never get here
                 Just (Tagged_MidState (MidState (PriorMove move) _ _)) -> move
                 Just (Tagged_EndState (EndState (PriorMove move) _ _)) -> move
-
-
-search :: Tagged_State -> Int -> ([Tagged_State], Int)
-search taggedState searchDepth =
-    alpha_beta_search taggedState searchDepth
