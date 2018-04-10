@@ -30,7 +30,6 @@ module Board
     )
     where
 
-
 import Data.Maybe ( mapMaybe  )
 import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )

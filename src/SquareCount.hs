@@ -8,7 +8,6 @@ module SquareCount
     )
     where
 
-
 newtype SquareCount = SquareCount Int deriving (Eq, Show)
 
 newtype BlackSquareCount = BlackSquareCount SquareCount deriving (Eq, Show)

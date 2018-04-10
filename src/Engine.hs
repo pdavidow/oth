@@ -1,5 +1,3 @@
-{-# LANGUAGE InstanceSigs #-}
-
 module Engine
     ( Strategy(..)
     , computerChoose
