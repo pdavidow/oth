@@ -16,6 +16,7 @@ import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeSomePosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
+import Lib ( mapTakeWhile )
 
 main = defaultMain tests
 
@@ -53,7 +54,12 @@ boardWithValidMovesDisplay showMoves board =
 
 
 unitTests = testGroup "Unit tests" $
-    [ testGroup "module Position" $
+    [ testGroup "module Lib" $
+        [ testCase "mapTakeWhile" $
+          (mapTakeWhile (*2) (< 10) [1,2,3,4,5,6,7]) @?= [2,4,6,8]
+        ]
+
+    , testGroup "module Position" $
         [ testCase "radiatingPosRows (Position 1 1)" $
             radiatingPosRows (makeSomePosition 1 1)  @?= 
                 [ PosRow 
