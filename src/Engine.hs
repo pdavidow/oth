@@ -8,7 +8,7 @@ module Engine
     where
 
 import System.Random  
-import Data.Tree.Game_tree.Negascout ( alpha_beta_search ) 
+import Data.Tree.Game_tree.Negascout ( negamax ) 
 import Safe ( atDef, headMay, tailMay )
 
 import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
@@ -78,7 +78,7 @@ bestNextMove taggedState searchDepth =
         let
             bestNextState :: Maybe Tagged_State 
             bestNextState = 
-                (return $ fst $ alpha_beta_search taggedState searchDepth) 
+                (return $ fst $ negamax taggedState searchDepth) 
                     >>= tailMay >>= headMay
         in
             case bestNextState of

@@ -86,16 +86,16 @@ instance Game_tree Tagged_State
         let
             cornerWeight :: Move -> Int
             cornerWeight move
-                | isCornerPos         $ movePos move =  1000
-                | isCornerNeighborPos $ movePos move =     0
-                | otherwise                          =   500
+                | isCornerPos         $ movePos move =  300
+                | isCornerNeighborPos $ movePos move =    1
+                | otherwise                          =   50
         in
             case taggedState of
                 Tagged_StartState _  -> 
                     100 -- constant whatever
 
                 Tagged_MidState (MidState (PriorMove move) _ _) -> 
-                    cornerWeight move + flipCount move
+                    cornerWeight move + (10 * (length $ actual_NextMoves_FromTaggedState taggedState)) + flipCount move
 
                 Tagged_EndState (EndState priorMove _ (CoreState _ _ board)) -> 
                     let
@@ -106,11 +106,11 @@ instance Game_tree Tagged_State
                         opColorCount = colorCount opColor board
                     in
                         if myColorCount == opColorCount then
-                            500
+                            200
                         else if myColorCount > opColorCount then
-                            100000
+                            500
                         else
-                            0
+                            1
 
 
     children :: Tagged_State -> [Tagged_State]
