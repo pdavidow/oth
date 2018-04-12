@@ -76,7 +76,7 @@ bestNextMove taggedState searchDepth =
         let
             bestNextState :: Maybe Tagged_State 
             bestNextState = 
-                (return $ fst $ negamax taggedState searchDepth) 
+                (pure $ fst $ negamax taggedState searchDepth) 
                     >>= tailMay >>= headMay
         in
             case bestNextState of

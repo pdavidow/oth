@@ -12,7 +12,7 @@ module Position
     where
 
 import Data.Function ( (&) )
-import Data.Maybe ( fromMaybe )
+import Data.Either ( fromRight  )
 
 import BoardSize ( boardSize )
 
@@ -24,7 +24,7 @@ newtype PosRow = PosRow [Position] deriving (Eq, Show)
 data Dir = Inc | Dec
 
 
-makePosition :: Monad m => Int -> Int -> m Position
+makePosition :: Int -> Int -> Either String Position
 makePosition i j =
     let
         isValidParam :: Int -> Bool
@@ -33,14 +33,14 @@ makePosition i j =
         sizeString = show boardSize
     in
         if isValidParam i && isValidParam j then
-            return $ Position i j
+            Right $ Position i j
         else
-            fail $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
+            Left $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
 
 
 makeSomePosition :: Int -> Int -> Position
 makeSomePosition i j =
-    fromMaybe (Position 1 1) $ makePosition i j
+    fromRight (Position 1 1) $ makePosition i j
 
 
 posCoords :: Position -> (Int, Int)
