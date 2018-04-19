@@ -8,7 +8,8 @@ module State
     , Tagged_State(..)
     , PriorMove(..)
     , NextMoves(..)
-    , EndReason(..)
+    , MidStatus(..)
+    , EndStatus(..)
     , GameSummary(..)
     , Winner(..)
     , makeStartState
@@ -42,9 +43,9 @@ data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriv
 
 data StartState = StartState Color NextMoves CoreState deriving (Eq, Show)
 
-data MidState = MidState PriorMove NextMoves CoreState deriving (Eq, Show)
+data MidState = MidState PriorMove MidStatus NextMoves CoreState deriving (Eq, Show)
 
-data EndState = EndState PriorMove EndReason CoreState deriving (Eq, Show)
+data EndState = EndState PriorMove EndStatus CoreState deriving (Eq, Show)
 
 data Tagged_State
     = Tagged_StartState StartState
@@ -56,12 +57,18 @@ newtype PriorMove = PriorMove Move deriving (Eq, Show)
 
 newtype NextMoves = NextMoves [Move] deriving (Eq, Show)
 
-data EndReason
+data MidStatus
+    = Normal
+    | ForfeitTurn_Rule2
+    | TransferDisk_Rule9
+        deriving (Eq, Show)
+
+data EndStatus
     = NoUnusedDisksForBoth
     | NoValidMoves
         deriving (Eq, Show)
 
-data GameSummary = GameSummary EndReason BlackSquareCount WhiteSquareCount deriving (Eq, Show)
+data GameSummary = GameSummary EndStatus BlackSquareCount WhiteSquareCount deriving (Eq, Show)
 
 data Winner
     = WinnerColor Color
@@ -86,16 +93,21 @@ instance Game_tree Tagged_State
         let
             cornerWeight :: Move -> Int
             cornerWeight move
-                | isCornerPos         $ movePos move =  300
-                | isCornerNeighborPos $ movePos move =    1
-                | otherwise                          =   50
+                | isCornerPos         $ movePos move =  500
+                | isCornerNeighborPos $ movePos move =    0
+                | otherwise                          =  100
         in
             case taggedState of
                 Tagged_StartState _  -> 
                     100 -- constant whatever
 
-                Tagged_MidState (MidState (PriorMove move) _ _) -> 
-                    cornerWeight move + (10 * (length $ actual_NextMoves_FromTaggedState taggedState)) + flipCount move
+                Tagged_MidState (MidState priorMove@(PriorMove move) _ _ _) -> 
+                    let
+                        myColor = priorMoveColor priorMove
+                        --weight = cornerWeight move + flipCount move
+                        weight = cornerWeight move + flipCount move - (10 * (length $ actual_NextMoves_FromTaggedState taggedState))
+                    in
+                        polarizeOn myColor weight
 
                 Tagged_EndState (EndState priorMove _ (CoreState _ _ board)) -> 
                     let
@@ -104,13 +116,17 @@ instance Game_tree Tagged_State
 
                         myColorCount = colorCount myColor board
                         opColorCount = colorCount opColor board
+
+                        weight = 
+                            if myColorCount == opColorCount then
+                                200
+                            else if myColorCount > opColorCount then
+                                1000
+                            else
+                                0
                     in
-                        if myColorCount == opColorCount then
-                            200
-                        else if myColorCount > opColorCount then
-                            500
-                        else
-                            1
+                        polarizeOn myColor weight
+
 
 
     children :: Tagged_State -> [Tagged_State]
@@ -119,6 +135,14 @@ instance Game_tree Tagged_State
             & map (\ move -> applyMove move taggedState)
 
 ------------------
+-- todo used?
+polarizeOn :: Color -> (Int -> Int)
+polarizeOn color = 
+    if color == Black then -- todo: userColor = Black
+        (*) 1
+    else
+        (*) (-1)
+
 
 makeStartState :: StartState
 makeStartState =
@@ -170,7 +194,7 @@ applyMove move taggedState =
                 board' = applyBoardMove move board
                 nexts = nextMovesFrom (toggleColor color) board'
             in
-                MidState (PriorMove move) nexts (CoreState b' w' board')
+                MidState (PriorMove move) Normal nexts (CoreState b' w' board')
     in
         case taggedState of
             Tagged_StartState _ -> processMidState makeMidState
@@ -179,13 +203,15 @@ applyMove move taggedState =
 
 
 processMidState :: MidState -> Tagged_State
-processMidState midState@(MidState priorMove nexts@(NextMoves moves) coreState@(CoreState b w board)) =
+processMidState midState@(MidState priorMove _ nexts@(NextMoves moves) coreState@(CoreState b w board)) =
     let
         priorColor = priorMoveColor priorMove
         nextColor = toggleColor priorColor
 
         isZeroUnused_Prior = isZeroUnusedDiskCount priorColor coreState
-        isZeroUnused_Next  = isZeroUnusedDiskCount nextColor  coreState
+        isZeroUnused_Next  = isZeroUnusedDiskCount  nextColor coreState
+
+        nexts'@(NextMoves priorColorMoves) = nextMovesFrom priorColor board
         
         end_NoValidMoves :: Tagged_State
         end_NoValidMoves = 
@@ -195,6 +221,10 @@ processMidState midState@(MidState priorMove nexts@(NextMoves moves) coreState@(
         end_NoUnusedDisksForBoth = 
             Tagged_EndState $ EndState priorMove NoUnusedDisksForBoth coreState
 
+        forfeitTurn :: Tagged_State
+        forfeitTurn = 
+            Tagged_MidState $ MidState priorMove ForfeitTurn_Rule2 nexts' coreState
+
         transferDisk :: Tagged_State
         transferDisk = 
             let
@@ -203,19 +233,22 @@ processMidState midState@(MidState priorMove nexts@(NextMoves moves) coreState@(
                 (Tagged_BlackUnusedDiskCount b') = _map Map.! Black
                 (Tagged_WhiteUnusedDiskCount w') = _map Map.! White
             in
-                Tagged_MidState $ MidState priorMove nexts (CoreState b' w' board)
+                Tagged_MidState $ MidState priorMove TransferDisk_Rule9 nexts (CoreState b' w' board)
 
         passThru :: Tagged_State
         passThru = 
             Tagged_MidState midState
     in
-        if null moves then -- Rule 10: When it is no longer possible for either player to move, the game is over.
-            end_NoValidMoves  
+        if null moves then 
+            if null priorColorMoves then
+                end_NoValidMoves -- Rule 10: When it is no longer possible for either player to move, the game is over.
+            else
+                forfeitTurn -- Rule 2: If a player cannot outflank and flip at least one opposing disk, they forfeit their turn and their opponent moves again. 
         else if isZeroUnused_Next then
-            if isZeroUnused_Prior then -- Rule 10: When it is no longer possible for either player to move, the game is over.
-                end_NoUnusedDisksForBoth 
-            else -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
-                transferDisk
+            if isZeroUnused_Prior then 
+                end_NoUnusedDisksForBoth -- Rule 10: When it is no longer possible for either player to move, the game is over.
+            else 
+                transferDisk -- Rule 9: If a player runs out of disks, but still has the opportunity to outflank an opposing disk on their turn, the opponent must give the player a disk to use. This can happen as many times as the player needs and can use a disk.
         else
             passThru
 
@@ -261,29 +294,32 @@ coreState_FromTaggedState :: Tagged_State -> CoreState
 coreState_FromTaggedState taggedState =
     case taggedState of
         Tagged_StartState (StartState _ _ x) -> x
-        Tagged_MidState (MidState _ _ x)     -> x
+        Tagged_MidState (MidState _ _ _ x)   -> x
         Tagged_EndState (EndState _ _ x)     -> x
 
 
 nextMoveColor_FromTaggedState :: Tagged_State -> Color
 nextMoveColor_FromTaggedState taggedState =  
-    let
-        priorMoveColorFrom :: PriorMove -> Color
-        priorMoveColorFrom priorMove = 
-            toggleColor $ priorMoveColor priorMove
-    in
-        case taggedState of
-            Tagged_StartState (StartState color _ _) -> color
-            Tagged_MidState (MidState priorMove _ _) -> priorMoveColorFrom priorMove
-            Tagged_EndState (EndState priorMove _ _) -> priorMoveColorFrom priorMove
+    case taggedState of
+        Tagged_StartState (StartState color _ _) -> 
+            color
+
+        Tagged_MidState (MidState priorMove midStatus _ _) ->
+            case midStatus of
+                Normal -> toggleColor $ priorMoveColor priorMove
+                ForfeitTurn_Rule2 -> priorMoveColor priorMove
+                TransferDisk_Rule9 -> toggleColor $ priorMoveColor priorMove
+
+        Tagged_EndState _ -> 
+            Black -- nonsense
         
 
 mbPriorMove_FromTaggedState :: Tagged_State -> Maybe PriorMove
 mbPriorMove_FromTaggedState taggedState =    
     case taggedState of
-        Tagged_StartState _                      -> Nothing
-        Tagged_MidState (MidState priorMove _ _) -> Just priorMove
-        Tagged_EndState (EndState priorMove _ _) -> Just priorMove
+        Tagged_StartState _                        -> Nothing
+        Tagged_MidState (MidState priorMove _ _ _) -> Just priorMove
+        Tagged_EndState (EndState priorMove _ _)   -> Just priorMove
 
 
 actual_mbPriorMove_FromTaggedState :: Tagged_State -> Maybe Move
@@ -296,7 +332,7 @@ actual_NextMoves_FromTaggedState :: Tagged_State -> [Move]
 actual_NextMoves_FromTaggedState taggedState =
     case taggedState of
         Tagged_StartState (StartState _ (NextMoves x) _) -> x
-        Tagged_MidState (MidState _ (NextMoves x) _)     -> x
+        Tagged_MidState (MidState _ _ (NextMoves x) _)   -> x
         Tagged_EndState _                                -> []
         
     

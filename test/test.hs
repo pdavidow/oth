@@ -11,7 +11,7 @@ import Data.List ( foldl' )
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), EndReason(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState)
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState, nextMoveColor_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeSomePosition, posCoords )
@@ -31,18 +31,19 @@ filledRowToPosRow (FilledRow xs) =
 
 board_Figure2 :: Board 
 board_Figure2 =
-  boardFromConfig 
-    [ (White, (makeSomePosition 3 3))
-    , (White, (makeSomePosition 3 7))
-    , (White, (makeSomePosition 7 5))
-    , (Black, (makeSomePosition 4 3))
-    , (Black, (makeSomePosition 4 6))
-    , (Black, (makeSomePosition 5 3))
-    , (Black, (makeSomePosition 5 5))
-    , (Black, (makeSomePosition 6 3))
-    , (Black, (makeSomePosition 6 4))
-    , (Black, (makeSomePosition 7 4))
-    ]
+    -- Figure 2, from page 2 of http://www.boardgamecapital.com/game_rules/othello.pdf
+    boardFromConfig 
+        [ (White, (makeSomePosition 3 3))
+        , (White, (makeSomePosition 3 7))
+        , (White, (makeSomePosition 7 5))
+        , (Black, (makeSomePosition 4 3))
+        , (Black, (makeSomePosition 4 6))
+        , (Black, (makeSomePosition 5 3))
+        , (Black, (makeSomePosition 5 5))
+        , (Black, (makeSomePosition 6 3))
+        , (Black, (makeSomePosition 6 4))
+        , (Black, (makeSomePosition 7 4))
+        ]
 
 
 boardWithValidMovesDisplay :: [(Int, Position)] -> Board -> String
@@ -438,9 +439,9 @@ unitTests = testGroup "Unit tests" $
             (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
             (b3, w3) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState3
 
-            (Tagged_MidState (MidState priorMove2 _ _)) = taggedState2 -- if not midstate (due to bug), then raise exception which is fine
-            (Tagged_MidState (MidState priorMove3 _ _)) = taggedState3 -- if not midstate (due to bug), then raise exception which is fine
-            (Tagged_MidState (MidState priorMove4 _ _)) = taggedState4 -- if not midstate (due to bug), then raise exception which is fine
+            (Tagged_MidState (MidState priorMove2 _ _ _)) = taggedState2 -- if pattern match fails (due to bug), then raise exception which is fine
+            (Tagged_MidState (MidState priorMove3 _ _ _)) = taggedState3 -- if pattern match fails (due to bug), then raise exception which is fine
+            (Tagged_MidState (MidState priorMove4 _ _ _)) = taggedState4 -- if pattern match fails (due to bug), then raise exception which is fine
 
             (c2, c3, c4) = (priorMoveColor priorMove2, priorMoveColor priorMove3, priorMoveColor priorMove4)
           in
@@ -480,27 +481,102 @@ unitTests = testGroup "Unit tests" $
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
                         endReason @?= NoUnusedDisksForBoth
                       ]
 
-              , testGroup "Black on first move is confronted with full board (contrived)" $
+              , testGroup "Black on first move is confronted with full White board -- except for last column which is blank (contrived)" $
                   let
                       (StartState c n (CoreState b w board)) = makeStartState
 
-                      board'= boardFromConfig [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                      board' = boardFromConfig [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                       move = Move Black (head $ emptySquares board') $ Outflanks []
 
-                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if it's not an end-state (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      (Tagged_EndState (EndState _ endStatus _)) = applyMove move taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
-                        endReason @?= NoValidMoves
+                        endStatus @?= NoValidMoves
                       ]
 
+              , testGroup "Black on first move is confronted with full White board -- except for last column which is blank, and (1,1) which is Black (contrived)" $
+                    let
+                        (StartState c n (CoreState b w board)) = makeStartState
+
+                        board' = boardFromConfig 
+                            [ (Black, (makeSomePosition 1 1))
+                            , (White, (makeSomePosition 1 2))
+                            , (White, (makeSomePosition 1 3))
+                            , (White, (makeSomePosition 1 4))
+                            , (White, (makeSomePosition 1 5))
+                            , (White, (makeSomePosition 1 6))
+                            , (White, (makeSomePosition 1 7))   
+                            , (White, (makeSomePosition 2 1))
+                            , (White, (makeSomePosition 2 2))
+                            , (White, (makeSomePosition 2 3))
+                            , (White, (makeSomePosition 2 4))
+                            , (White, (makeSomePosition 2 5))
+                            , (White, (makeSomePosition 2 6))
+                            , (White, (makeSomePosition 2 7))  
+                            , (White, (makeSomePosition 3 1))
+                            , (White, (makeSomePosition 3 2))
+                            , (White, (makeSomePosition 3 3))
+                            , (White, (makeSomePosition 3 4))
+                            , (White, (makeSomePosition 3 5))
+                            , (White, (makeSomePosition 3 6))
+                            , (White, (makeSomePosition 3 7))    
+                            , (White, (makeSomePosition 4 1))
+                            , (White, (makeSomePosition 4 2))
+                            , (White, (makeSomePosition 4 3))
+                            , (White, (makeSomePosition 4 4))
+                            , (White, (makeSomePosition 4 5))
+                            , (White, (makeSomePosition 4 6))
+                            , (White, (makeSomePosition 4 7))    
+                            , (White, (makeSomePosition 5 1))
+                            , (White, (makeSomePosition 5 2))
+                            , (White, (makeSomePosition 5 3))
+                            , (White, (makeSomePosition 5 4))
+                            , (White, (makeSomePosition 5 5))
+                            , (White, (makeSomePosition 5 6))
+                            , (White, (makeSomePosition 5 7))  
+                            , (White, (makeSomePosition 6 1))
+                            , (White, (makeSomePosition 6 2))
+                            , (White, (makeSomePosition 6 3))
+                            , (White, (makeSomePosition 6 4))
+                            , (White, (makeSomePosition 6 5))
+                            , (White, (makeSomePosition 6 6))
+                            , (White, (makeSomePosition 6 7))      
+                            , (White, (makeSomePosition 7 1))
+                            , (White, (makeSomePosition 7 2))
+                            , (White, (makeSomePosition 7 3))
+                            , (White, (makeSomePosition 7 4))
+                            , (White, (makeSomePosition 7 5))
+                            , (White, (makeSomePosition 7 6))
+                            , (White, (makeSomePosition 7 7))  
+                            , (White, (makeSomePosition 8 1))
+                            , (White, (makeSomePosition 8 2))
+                            , (White, (makeSomePosition 8 3))
+                            , (White, (makeSomePosition 8 4))
+                            , (White, (makeSomePosition 8 5))
+                            , (White, (makeSomePosition 8 6))
+                            , (White, (makeSomePosition 8 7))            
+                            ]
+
+                        taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
+                        moves1 = actual_NextMoves_FromTaggedState taggedState1
+
+                        taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = applyMove (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                    in
+                        [ testCase "First move results in: Tagged_MidState, ForfeitTurn_Rule2" $ 
+                            midStatus @?= ForfeitTurn_Rule2
+
+                        , testCase "Second move color is also Black" $ 
+                            nextMoveColor_FromTaggedState taggedState2 @?= Black
+                        ]
+    
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
@@ -512,10 +588,10 @@ unitTests = testGroup "Unit tests" $
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      taggedState2 = applyMove (head moves1) taggedState1
+                      taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = applyMove (head moves1) taggedState1
                       moves2 = actual_NextMoves_FromTaggedState taggedState2
           
-                      taggedState3 = applyMove (head moves2) taggedState2
+                      taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = applyMove (head moves2) taggedState2
 
                       (b1, w1) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState1
                       (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
@@ -525,6 +601,9 @@ unitTests = testGroup "Unit tests" $
     
                       , testCase "Black after using disk for his first move, then transfers another to White -- prior to White's first move" $ 
                         (b2, w2) @?= (30, 1)   
+
+                      , testCase "Go from TransferDisk_Rule9 to Normal" $ 
+                        (midStatus2, midStatus3) @?= (TransferDisk_Rule9, Normal)   
                       ]   
               -------------------------------------------------------------------------------------------                        
               -- to test this section, temp uncomment out -- but need to expose normally unexposed Board.flipAt       

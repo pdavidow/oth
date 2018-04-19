@@ -18,7 +18,7 @@ import Disk ( Color(..), diskColor, flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import State ( EndState, Tagged_State, PriorMove(..), GameSummary(..), EndReason(..), Winner(..), board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner, mbPriorMove_FromTaggedState, actual_mbPriorMove_FromTaggedState, priorMoveColor )
+import State ( EndState, Tagged_State, PriorMove(..), GameSummary(..), EndStatus(..), Winner(..), board_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, gameSummary, winner, mbPriorMove_FromTaggedState, actual_mbPriorMove_FromTaggedState, priorMoveColor )
 import SquareCount ( Tagged_SquareCount(..), countFrom )
 import Lib ( vSlice ) 
 

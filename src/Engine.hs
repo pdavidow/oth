@@ -80,7 +80,7 @@ bestNextMove taggedState searchDepth =
                     >>= tailMay >>= headMay
         in
             case bestNextState of
-                Nothing                                                -> dummyMove
-                Just (Tagged_StartState _)                             -> dummyMove -- should never get here
-                Just (Tagged_MidState (MidState (PriorMove move) _ _)) -> move
-                Just (Tagged_EndState (EndState (PriorMove move) _ _)) -> move
+                Nothing                                                  -> dummyMove
+                Just (Tagged_StartState _)                               -> dummyMove -- should never get here
+                Just (Tagged_MidState (MidState (PriorMove move) _ _ _)) -> move
+                Just (Tagged_EndState (EndState (PriorMove move) _ _))   -> move
