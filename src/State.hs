@@ -298,20 +298,20 @@ coreState_FromTaggedState taggedState =
         Tagged_EndState (EndState _ _ x)     -> x
 
 
-nextMoveColor_FromTaggedState :: Tagged_State -> Color
+nextMoveColor_FromTaggedState :: Tagged_State -> Maybe Color
 nextMoveColor_FromTaggedState taggedState =  
     case taggedState of
         Tagged_StartState (StartState color _ _) -> 
-            color
+            Just color
 
         Tagged_MidState (MidState priorMove midStatus _ _) ->
-            case midStatus of
+            Just $ case midStatus of
                 Normal -> toggleColor $ priorMoveColor priorMove
                 ForfeitTurn_Rule2 -> priorMoveColor priorMove
                 TransferDisk_Rule9 -> toggleColor $ priorMoveColor priorMove
 
         Tagged_EndState _ -> 
-            Black -- nonsense
+            Nothing
         
 
 mbPriorMove_FromTaggedState :: Tagged_State -> Maybe PriorMove

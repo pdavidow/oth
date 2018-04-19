@@ -491,7 +491,7 @@ unitTests = testGroup "Unit tests" $
                   let
                       (StartState c n (CoreState b w board)) = makeStartState
 
-                      board' = boardFromConfig [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                      board' = boardFromConfig  [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                       move = Move Black (head $ emptySquares board') $ Outflanks []
@@ -502,68 +502,11 @@ unitTests = testGroup "Unit tests" $
                         endStatus @?= NoValidMoves
                       ]
 
-              , testGroup "Black on first move is confronted with full White board -- except for last column which is blank, and (1,1) which is Black (contrived)" $
+              , testGroup "Black on first move is confronted with full White board -- except for (1,1) which is Black, and last column which is blank (contrived)" $
                     let
                         (StartState c n (CoreState b w board)) = makeStartState
 
-                        board' = boardFromConfig 
-                            [ (Black, (makeSomePosition 1 1))
-                            , (White, (makeSomePosition 1 2))
-                            , (White, (makeSomePosition 1 3))
-                            , (White, (makeSomePosition 1 4))
-                            , (White, (makeSomePosition 1 5))
-                            , (White, (makeSomePosition 1 6))
-                            , (White, (makeSomePosition 1 7))   
-                            , (White, (makeSomePosition 2 1))
-                            , (White, (makeSomePosition 2 2))
-                            , (White, (makeSomePosition 2 3))
-                            , (White, (makeSomePosition 2 4))
-                            , (White, (makeSomePosition 2 5))
-                            , (White, (makeSomePosition 2 6))
-                            , (White, (makeSomePosition 2 7))  
-                            , (White, (makeSomePosition 3 1))
-                            , (White, (makeSomePosition 3 2))
-                            , (White, (makeSomePosition 3 3))
-                            , (White, (makeSomePosition 3 4))
-                            , (White, (makeSomePosition 3 5))
-                            , (White, (makeSomePosition 3 6))
-                            , (White, (makeSomePosition 3 7))    
-                            , (White, (makeSomePosition 4 1))
-                            , (White, (makeSomePosition 4 2))
-                            , (White, (makeSomePosition 4 3))
-                            , (White, (makeSomePosition 4 4))
-                            , (White, (makeSomePosition 4 5))
-                            , (White, (makeSomePosition 4 6))
-                            , (White, (makeSomePosition 4 7))    
-                            , (White, (makeSomePosition 5 1))
-                            , (White, (makeSomePosition 5 2))
-                            , (White, (makeSomePosition 5 3))
-                            , (White, (makeSomePosition 5 4))
-                            , (White, (makeSomePosition 5 5))
-                            , (White, (makeSomePosition 5 6))
-                            , (White, (makeSomePosition 5 7))  
-                            , (White, (makeSomePosition 6 1))
-                            , (White, (makeSomePosition 6 2))
-                            , (White, (makeSomePosition 6 3))
-                            , (White, (makeSomePosition 6 4))
-                            , (White, (makeSomePosition 6 5))
-                            , (White, (makeSomePosition 6 6))
-                            , (White, (makeSomePosition 6 7))      
-                            , (White, (makeSomePosition 7 1))
-                            , (White, (makeSomePosition 7 2))
-                            , (White, (makeSomePosition 7 3))
-                            , (White, (makeSomePosition 7 4))
-                            , (White, (makeSomePosition 7 5))
-                            , (White, (makeSomePosition 7 6))
-                            , (White, (makeSomePosition 7 7))  
-                            , (White, (makeSomePosition 8 1))
-                            , (White, (makeSomePosition 8 2))
-                            , (White, (makeSomePosition 8 3))
-                            , (White, (makeSomePosition 8 4))
-                            , (White, (makeSomePosition 8 5))
-                            , (White, (makeSomePosition 8 6))
-                            , (White, (makeSomePosition 8 7))            
-                            ]
+                        board' = boardFromConfig $ [(Black, (makeSomePosition 1 1))] ++ tail [ (White,(makeSomePosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                         taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
@@ -574,7 +517,7 @@ unitTests = testGroup "Unit tests" $
                             midStatus @?= ForfeitTurn_Rule2
 
                         , testCase "Second move color is also Black" $ 
-                            nextMoveColor_FromTaggedState taggedState2 @?= Black
+                            nextMoveColor_FromTaggedState taggedState2 @?= Just Black
                         ]
     
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $

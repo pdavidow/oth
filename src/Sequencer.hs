@@ -4,6 +4,7 @@ module Sequencer
     where 
  
 import Safe ( atDef )
+import Data.Maybe ( fromJust )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
@@ -57,7 +58,7 @@ advance players move taggedState = do
 
 nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
 nextPlayer (pb, pw) taggedState =
-    case nextMoveColor_FromTaggedState taggedState of
+    case fromJust $ nextMoveColor_FromTaggedState taggedState of
         Black -> Tagged_PlayerBlack pb
         White -> Tagged_PlayerWhite pw
 
