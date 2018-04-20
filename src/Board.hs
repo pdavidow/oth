@@ -15,9 +15,13 @@ module Board
     , filledPositions
     , boardSquaresColored
     , squaresColoredCount
+    , isSquareColored
+    , isEmptyAt
+    , isFilledAt
     , emptySquares
-    , diskFrom
     , filledSquares
+    , toFilledSquare
+    , diskFrom
     , boardAt
     , boardRow
     , movePos
@@ -26,11 +30,13 @@ module Board
     , colorCount
     , moveColor
     , outflankPositions
+    , cornerCountsGroupedBlackWhite
+    , filledSquaresAdjacentToEmptyCorners
     ------------------------------------------ ,flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
     where
 
-import Data.Maybe ( mapMaybe  )
+import Data.Maybe ( mapMaybe )
 import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
@@ -180,6 +186,16 @@ filledSquares (Board board) =
     mapMaybe toFilledSquare $ elems board
 
 
+emptyCorners :: Board -> [EmptySquare]
+emptyCorners board =
+    mapMaybe toEmptySquare $ corners board
+
+
+filledCorners :: Board -> [FilledSquare]
+filledCorners board =
+    mapMaybe toFilledSquare $ corners board
+
+
 diskFrom :: FilledSquare -> Disk
 diskFrom (FilledSquare disk _) =  
     disk
@@ -200,6 +216,16 @@ isEmptySquare taggedSquare =
 isFilledSquare :: Tagged_Square -> Bool
 isFilledSquare taggedSquare =
     not $ isEmptySquare taggedSquare
+
+
+isEmptyAt :: Position -> Board -> Bool
+isEmptyAt pos board =
+    isEmptySquare $ boardAt board pos
+
+
+isFilledAt :: Position -> Board -> Bool
+isFilledAt pos board =
+    isFilledSquare $ boardAt board pos
 
 
 toPos :: Tagged_Square -> Position
@@ -264,6 +290,7 @@ colorCount color board =
         & length
 
 
+-- todo redo as tuple, then reuse in heuristic
 squaresColoredCount :: Board -> Map.Map Color Int
 squaresColoredCount board =
     let
@@ -336,3 +363,31 @@ applyBoardMove (Move color emptySquare (Outflanks xs)) board =
 dummyMove :: Move   
 dummyMove =
     Move Black (EmptySquare (makeSomePosition 1 1) $ RadiatingPosRows []) (Outflanks [])
+
+
+cornerCountsGroupedBlackWhite :: Board -> ( Int,  Int )
+cornerCountsGroupedBlackWhite board =
+    ( length blacks, length whites)
+        where ( blacks, whites ) = cornersGroupedBlackWhite board
+
+
+cornersGroupedBlackWhite :: Board -> ( [FilledSquare],  [FilledSquare] )
+cornersGroupedBlackWhite board =
+    let
+        xs = filledCorners board
+        f = \ color -> filter (isSquareColored color) xs
+    in
+        (f Black, f White)
+
+
+filledSquaresAdjacentToEmptyCorners :: Board -> [FilledSquare]
+filledSquaresAdjacentToEmptyCorners board =
+    emptyCorners board
+        & concatMap (adjacentPositions . toPos . Tagged_EmptySquare)
+        & mapMaybe (toFilledSquare . boardAt board)
+
+
+corners :: Board -> [Tagged_Square]
+corners board =
+    [(1,1), (1,boardSize), (boardSize,boardSize), (boardSize,1)]
+        & map (\(i,j) -> boardAt board (makeSomePosition i j)) 

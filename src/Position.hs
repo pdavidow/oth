@@ -6,8 +6,7 @@ module Position
     , posCoords
     , adjacentPositions
     , radiatingPosRows
-    , isCornerPos
-    , isCornerNeighborPos
+    , isValidCoords
     )
     where
 
@@ -24,15 +23,22 @@ newtype PosRow = PosRow [Position] deriving (Eq, Show)
 data Dir = Inc | Dec
 
 
+isValidCoord :: Int -> Bool
+isValidCoord x = 
+    x >= 1 && x <= boardSize
+
+
+isValidCoords :: (Int, Int) -> Bool
+isValidCoords (i, j) =
+    isValidCoord i && isValidCoord j
+
+
 makePosition :: Int -> Int -> Either String Position
 makePosition i j =
     let
-        isValidParam :: Int -> Bool
-        isValidParam = \x -> x >= 1 && x <= boardSize
-
         sizeString = show boardSize
     in
-        if isValidParam i && isValidParam j then
+        if isValidCoords (i,j) then
             Right $ Position i j
         else
             Left $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
@@ -46,47 +52,6 @@ makeSomePosition i j =
 posCoords :: Position -> (Int, Int)
 posCoords (Position i j) = 
     (i, j)
-
-
-isCornerPos :: Position -> Bool
-isCornerPos (Position i j) =
-    f i && f j
-        where f = \x -> x == 1 || x == boardSize
-
-
-isCornerNeighborPos :: Position -> Bool
-isCornerNeighborPos pos =
-    isCornerNeighborPos_UpperLeft  pos ||
-    isCornerNeighborPos_UpperRight pos ||
-    isCornerNeighborPos_LowerRight pos ||
-    isCornerNeighborPos_LowerLeft  pos 
-    
-
-isCornerNeighborPos_UpperLeft :: Position -> Bool
-isCornerNeighborPos_UpperLeft (Position 1 2) = True
-isCornerNeighborPos_UpperLeft (Position 2 2) = True
-isCornerNeighborPos_UpperLeft (Position 2 1) = True
-isCornerNeighborPos_UpperLeft (Position _ _) = False
-
-
-isCornerNeighborPos_UpperRight :: Position -> Bool
-isCornerNeighborPos_UpperRight (Position 1 j) = (j == boardSize - 1)
-isCornerNeighborPos_UpperRight (Position 2 j) = (j == boardSize - 1) || (j == boardSize)
-isCornerNeighborPos_UpperRight (Position _ _) = False
-
-
-isCornerNeighborPos_LowerRight :: Position -> Bool
-isCornerNeighborPos_LowerRight (Position i j) = 
-    ((i == boardSize - 1) && (j == boardSize - 1)) ||
-    ((i == boardSize - 1) && (j == boardSize))     ||
-    ((i == boardSize)     && (j == boardSize - 1))
-
-
-isCornerNeighborPos_LowerLeft :: Position -> Bool
-isCornerNeighborPos_LowerLeft (Position 7 1) = True
-isCornerNeighborPos_LowerLeft (Position 7 2) = True
-isCornerNeighborPos_LowerLeft (Position 8 2) = True
-isCornerNeighborPos_LowerLeft (Position _ _) = False
 
 
 adjacentPositions :: Position -> [Position]

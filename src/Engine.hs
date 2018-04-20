@@ -6,12 +6,11 @@ module Engine
     where
 
 import System.Random  
-import Data.Tree.Game_tree.Negascout ( negamax ) 
+import Data.Tree.Game_tree.Negascout ( alpha_beta_search ) 
 import Safe ( atDef, headMay, tailMay )
 
 import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
 import Board ( Move, dummyMove )
-
 
 data Strategy 
     = RandomPick
@@ -46,8 +45,8 @@ stratDisplay strat =
         
 computerChoose :: Strategy -> Tagged_State -> IO Move 
 computerChoose strat taggedState = do
-    if isTaggedEndState taggedState then do -- should never get here
-        return dummyMove
+    if isTaggedEndState taggedState then do 
+        return dummyMove -- should never get here
     else do
         case strat of
             RandomPick -> do 
@@ -70,13 +69,13 @@ computerChoose strat taggedState = do
             
 bestNextMove :: Tagged_State -> Int -> Move
 bestNextMove taggedState searchDepth =
-    if isTaggedEndState taggedState then -- should never get here
-        dummyMove
+    if isTaggedEndState taggedState then
+        dummyMove -- should never get here
     else
         let
             bestNextState :: Maybe Tagged_State 
             bestNextState = 
-                (pure $ fst $ negamax taggedState searchDepth) 
+                (pure $ fst $ alpha_beta_search taggedState searchDepth) 
                     >>= tailMay >>= headMay
         in
             case bestNextState of
