@@ -2,7 +2,7 @@ module Position
     ( Position -- hiding constructor
     , PosRow(..)
     , makePosition
-    , makeSomePosition
+    , makeValidPosition
     , posCoords
     , adjacentPositions
     , radiatingPosRows
@@ -11,7 +11,6 @@ module Position
     where
 
 import Data.Function ( (&) )
-import Data.Either ( fromRight  )
 
 import BoardSize ( boardSize )
 
@@ -44,9 +43,9 @@ makePosition i j =
             Left $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
 
 
-makeSomePosition :: Int -> Int -> Position
-makeSomePosition i j =
-    fromRight (Position 1 1) $ makePosition i j
+makeValidPosition :: Int -> Int -> Position
+makeValidPosition i j =
+    either error id $ makePosition i j
 
 
 posCoords :: Position -> (Int, Int)

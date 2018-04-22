@@ -39,7 +39,7 @@ import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves, moveColor, colorCount, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCountsGroupedBlackWhite, filledSquaresAdjacentToEmptyCorners ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
-import Position ( isValidCoords, makeSomePosition, posCoords )
+import Position ( isValidCoords, makeValidPosition, posCoords )
 
 
 data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
@@ -341,8 +341,8 @@ heuristic_frontierDisks myColor board =
                         ys = map (j +) [ 0,  1,  1,  1,  0, -1, -1, -1]
                     in
                         zip xs ys
-                            & filter (\ (x,y) -> isValidCoords (x,y) && (isEmptyAt (makeSomePosition x y) board))
-                            & mapMaybe (\ _ -> toFilledSquare $ boardAt board $ makeSomePosition i j)
+                            & filter (\ (x,y) -> isValidCoords (x,y) && (isEmptyAt (makeValidPosition x y) board))
+                            & mapMaybe (\ _ -> toFilledSquare $ boardAt board $ makeValidPosition i j)
                 )
 
         count = \ color -> length $ filter (isSquareColored color) filledSquares'

@@ -45,7 +45,7 @@ import Safe ( headMay, tailMay )
 
 import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
-import Position ( Position, PosRow(..), makeSomePosition, adjacentPositions, posCoords, radiatingPosRows )
+import Position ( Position, PosRow(..), makeValidPosition, adjacentPositions, posCoords, radiatingPosRows )
 import Lib ( mapTakeWhile ) 
  
 
@@ -89,7 +89,7 @@ makeBoard =
         makeElem :: (Int, Int) -> Tagged_Square
         makeElem (i,j) =
             Tagged_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
-                where pos = makeSomePosition i j
+                where pos = makeValidPosition i j
     in
         Board $ array ((1,1), (boardSize,boardSize)) 
             [ ((i,j), makeElem (i,j)) | i <- [1..boardSize], j <- [1..boardSize] ]
@@ -109,10 +109,10 @@ boardFromConfig config =
 initialBoard :: Board
 initialBoard = 
     boardFromConfig 
-        [ (White, (makeSomePosition 4 4))
-        , (White, (makeSomePosition 5 5))
-        , (Black, (makeSomePosition 4 5))
-        , (Black, (makeSomePosition 5 4))
+        [ (White, (makeValidPosition 4 4))
+        , (White, (makeValidPosition 5 5))
+        , (Black, (makeValidPosition 4 5))
+        , (Black, (makeValidPosition 5 4))
         ]
 
 
@@ -362,7 +362,7 @@ applyBoardMove (Move color emptySquare (Outflanks xs)) board =
 
 dummyMove :: Move   
 dummyMove =
-    Move Black (EmptySquare (makeSomePosition 1 1) $ RadiatingPosRows []) (Outflanks [])
+    Move Black (EmptySquare (makeValidPosition 1 1) $ RadiatingPosRows []) (Outflanks [])
 
 
 cornerCountsGroupedBlackWhite :: Board -> ( Int,  Int )
@@ -390,4 +390,4 @@ filledSquaresAdjacentToEmptyCorners board =
 corners :: Board -> [Tagged_Square]
 corners board =
     [(1,1), (1,boardSize), (boardSize,boardSize), (boardSize,1)]
-        & map (\(i,j) -> boardAt board (makeSomePosition i j)) 
+        & map (\(i,j) -> boardAt board (makeValidPosition i j)) 
