@@ -1,7 +1,6 @@
 module Position
     ( Position -- hiding constructor
     , PosRow(..)
-    , makePosition
     , makeValidPosition
     , posCoords
     , adjacentPositions

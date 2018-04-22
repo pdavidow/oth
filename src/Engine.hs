@@ -2,6 +2,7 @@ module Engine
     ( Strategy(..)
     , computerChoose
     , stratDisplay
+    , bestNextMove
     )
     where
 
@@ -66,7 +67,7 @@ computerChoose strat taggedState = do
             SearchDepth_9  -> return $ bestNextMove taggedState 9
             SearchDepth_10 -> return $ bestNextMove taggedState 10
 
-            
+
 bestNextMove :: Tagged_State -> Int -> Move
 bestNextMove taggedState searchDepth =
     if isTaggedEndState taggedState then

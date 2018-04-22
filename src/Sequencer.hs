@@ -4,17 +4,19 @@ module Sequencer
     where 
  
 import Safe ( atDef )
-import Data.Maybe ( fromJust )
+import Data.Maybe ( fromMaybe )
+import Data.List ( find )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
 import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState )
-import Board ( Move, dummyMove, movePosChoices )
+import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
-import Position ( Position )
+import Position ( Position, makeValidPosition )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
-import Engine ( computerChoose, stratDisplay )
-import Lib ( getValidChoice )
+import Engine ( computerChoose, stratDisplay, bestNextMove )
+import Lib ( getValidChoice ) 
+import ColumnName ( posNomenclature )
 
 
 moveSequence :: (PlayerBlack, PlayerWhite) -> Tagged_State -> IO ()
@@ -58,7 +60,7 @@ advance players move taggedState = do
 
 nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
 nextPlayer (pb, pw) taggedState =
-    case fromJust $ nextMoveColor_FromTaggedState taggedState of
+    case fromMaybe Black $ nextMoveColor_FromTaggedState taggedState of
         Black -> Tagged_PlayerBlack pb
         White -> Tagged_PlayerWhite pw
 
@@ -79,6 +81,11 @@ handlePersonChoose color numberedMovesWithPos moves taggedState  = do
         putStrLn ""
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) taggedState
         handlePersonChoose color numberedMovesWithPos moves taggedState 
+    else if n == choiceNumberFor_Suggest then do
+        let pos = movePos $ bestNextMove taggedState suggestionSearchDepth
+        let index = fst $ fromMaybe (0, makeValidPosition 1 1) $ find (\(_, pos') -> pos == pos') numberedMovesWithPos
+        putStrLn $ "\nComputer suggests: " ++ movePosChoicesNomenclature [(index, pos)]
+        handlePersonChoose color numberedMovesWithPos moves taggedState 
     else do 
         return $ n - 1 -- index is zero-based
 
@@ -86,12 +93,22 @@ handlePersonChoose color numberedMovesWithPos moves taggedState  = do
 getMoveChoice :: Color -> [(Int, Position)] -> IO Int
 getMoveChoice color numberedMovesWithPos = do
     let posTags = Prelude.map fst numberedMovesWithPos
-    let options = choiceNumberFor_DisplayChoicesOnBoard : posTags
+    let options = choiceNumberFor_DisplayChoicesOnBoard : choiceNumberFor_Suggest : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest (SearchDepth " ++ show suggestionSearchDepth ++ ")) " ++ nomenclature ++ "\nEnter choice"
     getValidChoice prompt options
 
 
 choiceNumberFor_DisplayChoicesOnBoard :: Int
 choiceNumberFor_DisplayChoicesOnBoard = 
     99
+
+
+choiceNumberFor_Suggest :: Int
+choiceNumberFor_Suggest = 
+    100
+
+
+suggestionSearchDepth :: Int
+suggestionSearchDepth =
+    5
