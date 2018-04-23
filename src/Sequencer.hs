@@ -16,7 +16,6 @@ import Position ( Position, makeValidPosition )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
 import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, bestNextMove, searchPhrase )
 import Lib ( getValidChoice ) 
-import ColumnName ( posNomenclature )
 
 
 moveSequence :: (PlayerBlack, PlayerWhite) -> Tagged_State -> IO ()
