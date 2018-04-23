@@ -14,7 +14,7 @@ import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
 import Position ( Position, makeValidPosition )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
-import Engine ( computerChoose, stratDisplay, bestNextMove )
+import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, bestNextMove, searchPhrase )
 import Lib ( getValidChoice ) 
 import ColumnName ( posNomenclature )
 
@@ -26,12 +26,12 @@ moveSequence players taggedState = do
     putStrLn $ gameStateDisplay Nothing taggedState
 
     move <- case playerTypeFrom taggedPlayer of
-        Person -> do
-            moveIndex <- personChoose (playerColor taggedPlayer) taggedState
+        Person suggestionSearchDepth -> do
+            moveIndex <- personChoose (playerColor taggedPlayer) suggestionSearchDepth taggedState
             return $ atDef dummyMove (actual_NextMoves_FromTaggedState taggedState) moveIndex
 
         Computer strategy -> do 
-            putStrLn $ "\nComputer (White) is working (" ++ (stratDisplay strategy) ++ ") ...\n"
+            putStrLn $ "\nComputer (White) is working (" ++ (strategyDisplay strategy) ++ ") ...\n"
             computerChoose strategy taggedState
 
     advance players move taggedState
@@ -65,27 +65,27 @@ nextPlayer (pb, pw) taggedState =
         White -> Tagged_PlayerWhite pw
 
 
-personChoose :: Color -> Tagged_State -> IO Int
-personChoose color taggedState = do
+personChoose :: Color -> SuggestionSearchDepth -> Tagged_State -> IO Int
+personChoose color suggestionSearchDepth taggedState = do
     let moves = actual_NextMoves_FromTaggedState taggedState
     let numberedMovesWithPos = movePosChoices moves
-    n <- handlePersonChoose color numberedMovesWithPos moves taggedState
+    n <- handlePersonChoose color numberedMovesWithPos moves suggestionSearchDepth taggedState
     return n
 
 
-handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> Tagged_State -> IO Int
-handlePersonChoose color numberedMovesWithPos moves taggedState  = do
+handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> Tagged_State -> IO Int
+handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth searchDepth) taggedState  = do
     n <- getMoveChoice color numberedMovesWithPos
 
     if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn ""
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) taggedState
-        handlePersonChoose color numberedMovesWithPos moves taggedState 
+        handlePersonChoose color numberedMovesWithPos moves s taggedState 
     else if n == choiceNumberFor_Suggest then do
-        let pos = movePos $ bestNextMove taggedState suggestionSearchDepth
+        let pos = movePos $ bestNextMove searchDepth taggedState
         let index = fst $ fromMaybe (0, makeValidPosition 1 1) $ find (\(_, pos') -> pos == pos') numberedMovesWithPos
-        putStrLn $ "\nComputer suggests: " ++ movePosChoicesNomenclature [(index, pos)]
-        handlePersonChoose color numberedMovesWithPos moves taggedState 
+        putStrLn $ "\nComputer suggests (after " ++ searchPhrase searchDepth ++ "): " ++ movePosChoicesNomenclature [(index, pos)]
+        handlePersonChoose color numberedMovesWithPos moves s taggedState 
     else do 
         return $ n - 1 -- index is zero-based
 
@@ -95,7 +95,7 @@ getMoveChoice color numberedMovesWithPos = do
     let posTags = Prelude.map fst numberedMovesWithPos
     let options = choiceNumberFor_DisplayChoicesOnBoard : choiceNumberFor_Suggest : posTags
     let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest (SearchDepth " ++ show suggestionSearchDepth ++ ")) " ++ nomenclature ++ "\nEnter choice"
+    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest) " ++ nomenclature ++ "\nEnter choice"
     getValidChoice prompt options
 
 
@@ -107,8 +107,3 @@ choiceNumberFor_DisplayChoicesOnBoard =
 choiceNumberFor_Suggest :: Int
 choiceNumberFor_Suggest = 
     100
-
-
-suggestionSearchDepth :: Int
-suggestionSearchDepth =
-    5

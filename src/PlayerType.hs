@@ -2,10 +2,10 @@ module PlayerType
     ( PlayerType(..) )
     where
 
-import Engine ( Strategy )
+import Engine ( Strategy, SuggestionSearchDepth ) 
 
  
 data PlayerType
-    = Person
+    = Person SuggestionSearchDepth
     | Computer Strategy
         deriving (Eq, Show)
