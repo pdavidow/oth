@@ -302,8 +302,13 @@ actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState =
 heuristic_pieceDifference :: Color -> Board -> Double 
 heuristic_pieceDifference myColor board = 
     let
-        myCount = colorCount myColor board
-        opCount = colorCount (toggleColor myColor) board
+        ( b, w ) = blacksWhites $ squaresColoredCounts_BlackWhite board
+
+        ( myCount, opCount ) = 
+            if myColor == Black then
+                ( b, w )
+            else
+                ( w, b )
 
         total = myCount + opCount
     in

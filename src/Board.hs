@@ -290,7 +290,6 @@ colorCount color board =
         & length
 
 
--- todo redo as tuple, then reuse in heuristic
 squaresColoredCounts_BlackWhite :: Board -> BlackWhite Int
 squaresColoredCounts_BlackWhite board =
     makeBlackWhite (colorCount Black board) (colorCount White board)   
