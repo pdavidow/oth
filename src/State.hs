@@ -32,14 +32,14 @@ module State
 import Data.Maybe ( mapMaybe )
 import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
-import qualified Data.Map.Strict as Map ( (!) )
 import Data.Array ( listArray, (!) )
 
 import Disk ( Color(..), toggleColor )
-import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCount, validMoves, moveColor, colorCount, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCountsGroupedBlackWhite, filledSquaresAdjacentToEmptyCorners ) 
-import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
+import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, colorCount, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
+import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom, applyToUnusedDiskCounts )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isValidCoords, makeValidPosition, posCoords )
+import BlackWhite ( blacksWhites )
 
 
 data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
@@ -145,11 +145,7 @@ applyMove move taggedState =
             let
                 (CoreState b w board) = coreState_FromTaggedState taggedState
                 color = moveColor move
-
-                _map = decreaseByOneFor color b w -- for only one of them, whichever it is
-                (Tagged_BlackUnusedDiskCount b') = _map Map.! Black
-                (Tagged_WhiteUnusedDiskCount w') = _map Map.! White
-
+                ( b', w' ) = applyToUnusedDiskCounts (decreaseByOneFor color) ( b, w )
                 board' = applyBoardMove move board
                 nexts = nextMovesFrom (toggleColor color) board'
             in
@@ -186,13 +182,8 @@ processMidState midState@(MidState priorMove _ nexts@(NextMoves moves) coreState
 
         transferDisk :: Tagged_State
         transferDisk = 
-            let
-                _map = transferDiskTo nextColor b w
-
-                (Tagged_BlackUnusedDiskCount b') = _map Map.! Black
-                (Tagged_WhiteUnusedDiskCount w') = _map Map.! White
-            in
-                Tagged_MidState $ MidState priorMove TransferDisk_Rule9 nexts (CoreState b' w' board)
+            Tagged_MidState $ MidState priorMove TransferDisk_Rule9 nexts (CoreState b' w' board)
+                where ( b', w' ) = applyToUnusedDiskCounts (transferDiskTo nextColor) ( b, w )
 
         passThru :: Tagged_State
         passThru = 
@@ -229,13 +220,8 @@ winner (GameSummary _ b w) =
 
 gameSummary :: EndState -> GameSummary
 gameSummary (EndState _ reason (CoreState _ _ board)) =
-    let
-        m = squaresColoredCount board
-
-        b = makeBlackSquareCount $ m Map.! Black
-        w = makeWhiteSquareCount $ m Map.! White
-    in
-        GameSummary reason b w
+    GameSummary reason (makeBlackSquareCount b) (makeWhiteSquareCount w)
+        where ( b, w ) = blacksWhites $ squaresColoredCounts_BlackWhite board
 
 
 board_FromTaggedState :: Tagged_State -> Board
@@ -388,7 +374,7 @@ heuristic_diskSquares myColor board =
 heuristic_cornerOccupancy :: Color -> Board -> Double 
 heuristic_cornerOccupancy myColor board = 
     let       
-        ( b, w ) = cornerCountsGroupedBlackWhite board
+        ( b, w ) = blacksWhites $ cornerCounts_BlackWhite board
 
         ( myCornerCount, oppCornerCount ) =
             if myColor == Black then ( b, w )

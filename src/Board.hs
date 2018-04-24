@@ -14,7 +14,7 @@ module Board
     , applyBoardMove
     , filledPositions
     , boardSquaresColored
-    , squaresColoredCount
+    , squaresColoredCounts_BlackWhite
     , isSquareColored
     , isEmptyAt
     , isFilledAt
@@ -30,7 +30,7 @@ module Board
     , colorCount
     , moveColor
     , outflankPositions
-    , cornerCountsGroupedBlackWhite
+    , cornerCounts_BlackWhite
     , filledSquaresAdjacentToEmptyCorners
     ------------------------------------------ ,flipAt -- Should NOT be exposed (but ok to temp expose for sake of commented-out test)
     )
@@ -40,12 +40,12 @@ import Data.Maybe ( mapMaybe )
 import Data.List ( foldl', nub )
 import Data.Array ( ( ! ), ( // ), Array, array, elems )
 import Data.Function ( (&) )
-import qualified Data.Map.Strict as Map ( Map, empty, insert )
 import Safe ( headMay, tailMay )
 
 import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), makeValidPosition, adjacentPositions, posCoords, radiatingPosRows )
+import BlackWhite ( BlackWhite(..), makeBlackWhite, blacksWhites )
 import Lib ( mapTakeWhile ) 
  
 
@@ -291,15 +291,9 @@ colorCount color board =
 
 
 -- todo redo as tuple, then reuse in heuristic
-squaresColoredCount :: Board -> Map.Map Color Int
-squaresColoredCount board =
-    let
-        f :: Color -> Map.Map Color Int -> Map.Map Color Int
-        f = \ color m -> Map.insert color (colorCount color board) m
-    in
-        Map.empty   
-            & f Black
-            & f White 
+squaresColoredCounts_BlackWhite :: Board -> BlackWhite Int
+squaresColoredCounts_BlackWhite board =
+    makeBlackWhite (colorCount Black board) (colorCount White board)   
             
 
 moveColor :: Move -> Color
@@ -365,19 +359,19 @@ dummyMove =
     Move Black (EmptySquare (makeValidPosition 1 1) $ RadiatingPosRows []) (Outflanks [])
 
 
-cornerCountsGroupedBlackWhite :: Board -> ( Int,  Int )
-cornerCountsGroupedBlackWhite board =
-    ( length blacks, length whites)
-        where ( blacks, whites ) = cornersGroupedBlackWhite board
+cornerCounts_BlackWhite :: Board -> BlackWhite Int
+cornerCounts_BlackWhite board =
+    makeBlackWhite (length b) (length w)
+        where ( b, w ) = blacksWhites $ corners_BlackWhite board
 
 
-cornersGroupedBlackWhite :: Board -> ( [FilledSquare],  [FilledSquare] )
-cornersGroupedBlackWhite board =
+corners_BlackWhite :: Board -> BlackWhite [FilledSquare]
+corners_BlackWhite board =
     let
         xs = filledCorners board
         f = \ color -> filter (isSquareColored color) xs
     in
-        (f Black, f White)
+        makeBlackWhite (f Black) (f White)
 
 
 filledSquaresAdjacentToEmptyCorners :: Board -> [FilledSquare]
