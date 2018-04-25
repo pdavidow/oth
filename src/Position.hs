@@ -9,6 +9,7 @@ module Position
     )
     where
 
+import Data.Either ( rights )
 import Data.Function ( (&) )
 
 import BoardSize ( boardSize )
@@ -54,18 +55,12 @@ posCoords (Position i j) =
 
 adjacentPositions :: Position -> [Position]
 adjacentPositions (Position i j) =
-    let
-        candidates = 
-            [ (i-1, j-1), (i, j-1), (i+1, j-1)
-            , (i-1, j  ),           (i+1, j  )
-            , (i-1, j+1), (i, j+1), (i+1, j+1)
-            ]
-
-        isInRange = \ x -> (x >= 1) && (x <= boardSize)
-    in
-        candidates
-            & filter (\ (i', j') -> isInRange i' && isInRange j') 
-            & map (\ (i', j') -> Position i' j')
+    [ (i-1, j-1), (i, j-1), (i+1, j-1)
+    , (i-1, j  ),           (i+1, j  )
+    , (i-1, j+1), (i, j+1), (i+1, j+1)
+    ]
+        & map (\ (i', j') -> makePosition i' j')
+        & rights
 
 
 radiatingPosRows :: Position -> [PosRow] 
