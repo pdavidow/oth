@@ -15,7 +15,6 @@ module State
     , makeStartState
     , priorMoveColor
     , applyMove
-    , isTaggedEndState
     , gameSummary
     , winner
     , board_FromTaggedState 
@@ -35,7 +34,7 @@ import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
 
 import Disk ( Color(..), toggleColor )
-import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, colorCount, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
+import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom, applyToUnusedDiskCounts )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isValidCoords, makeValidPosition, posCoords )
@@ -116,13 +115,6 @@ makeStartState =
 priorMoveColor :: PriorMove -> Color 
 priorMoveColor (PriorMove (Move color _ _)) =
     color
-
-
-isTaggedEndState :: Tagged_State -> Bool
-isTaggedEndState taggedState =
-    case taggedState of
-        Tagged_EndState _ -> True
-        _ -> False
 
 
 nextMovesFrom :: Color -> Board -> NextMoves

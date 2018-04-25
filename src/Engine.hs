@@ -14,7 +14,7 @@ import Data.Tree.Game_tree.Negascout ( alpha_beta_search )
 import Safe ( atDef, headMay, tailMay )
 import Language.English.Plural ( tryPlural ) 
 
-import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState, isTaggedEndState )
+import State ( MidState(..), EndState(..), Tagged_State(..), PriorMove(..), actual_NextMoves_FromTaggedState )
 import Board ( Move, dummyMove )
 
 data Strategy 
@@ -68,33 +68,37 @@ searchPhrase searchDepth =
 
 computerChoose :: Strategy -> Tagged_State -> IO Move 
 computerChoose strat taggedState = do
-    if isTaggedEndState taggedState then do 
-        return dummyMove -- should never get here
-    else do
-        case strat of
-            RandomPick -> do 
-                gen <- getStdGen  
-                let moves = actual_NextMoves_FromTaggedState taggedState
-                let (randN, _) = randomR (0, length moves - 1) gen :: (Int, StdGen)
-                return $ atDef dummyMove moves randN
+    case taggedState of
+        Tagged_EndState _ -> do 
+            return dummyMove -- should never get here
 
-            SearchDepth searchDepth ->
-                return $ bestNextMove searchDepth taggedState
+        _ -> do
+            case strat of
+                RandomPick -> do 
+                    gen <- getStdGen  
+                    let moves = actual_NextMoves_FromTaggedState taggedState
+                    let (randN, _) = randomR (0, length moves - 1) gen :: (Int, StdGen)
+                    return $ atDef dummyMove moves randN
+
+                SearchDepth searchDepth ->
+                    return $ bestNextMove searchDepth taggedState
 
 
 bestNextMove :: SearchDepth -> Tagged_State -> Move
 bestNextMove searchDepth taggedState =
-    if isTaggedEndState taggedState then
-        dummyMove -- should never get here
-    else
-        let
-            bestNextState :: Maybe Tagged_State 
-            bestNextState = 
-                (pure $ fst $ alpha_beta_search taggedState $ depthLevel searchDepth) 
-                    >>= tailMay >>= headMay
-        in
-            case bestNextState of
-                Nothing                                                  -> dummyMove
-                Just (Tagged_StartState _)                               -> dummyMove -- should never get here
-                Just (Tagged_MidState (MidState (PriorMove move) _ _ _)) -> move
-                Just (Tagged_EndState (EndState (PriorMove move) _ _))   -> move
+    case taggedState of
+        Tagged_EndState _ ->  
+            dummyMove -- should never get here
+
+        _ -> 
+            let
+                bestNextState :: Maybe Tagged_State 
+                bestNextState = 
+                    (pure $ fst $ alpha_beta_search taggedState $ depthLevel searchDepth) 
+                        >>= tailMay >>= headMay
+            in
+                case bestNextState of
+                    Nothing                                                  -> dummyMove
+                    Just (Tagged_StartState _)                               -> dummyMove -- should never get here
+                    Just (Tagged_MidState (MidState (PriorMove move) _ _ _)) -> move
+                    Just (Tagged_EndState (EndState (PriorMove move) _ _))   -> move
