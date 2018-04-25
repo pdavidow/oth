@@ -11,11 +11,12 @@ import Data.List ( foldl' )
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState, board_FromTaggedState, nextMoveColor_FromTaggedState)
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
+import BlackWhite ( blacksWhites )
 import Lib ( mapTakeWhile )
 
 main = defaultMain tests
@@ -435,9 +436,9 @@ unitTests = testGroup "Unit tests" $
             display3 = gameStateDisplay Nothing taggedState2
             display4 = gameStateDisplay (Just numberedMovesWithPos2) taggedState2
 
-            (b1, w1) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState1
-            (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
-            (b3, w3) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState3
+            (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
+            (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
+            (b3, w3) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState3
 
             (Tagged_MidState (MidState priorMove2 _ _ _)) = taggedState2 -- if pattern match fails (due to bug), then raise exception which is fine
             (Tagged_MidState (MidState priorMove3 _ _ _)) = taggedState3 -- if pattern match fails (due to bug), then raise exception which is fine
@@ -473,7 +474,7 @@ unitTests = testGroup "Unit tests" $
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
                       (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
-                      (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
+                      (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
 
                       (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne tb !! (nb - 1) 
                       (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
@@ -524,7 +525,7 @@ unitTests = testGroup "Unit tests" $
                   let
                       startState@(StartState c n (CoreState b w board)) = makeStartState
                       (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
-                      (nb, nw) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState $ Tagged_StartState startState
+                      (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
 
                       (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw
 
@@ -536,8 +537,8 @@ unitTests = testGroup "Unit tests" $
           
                       taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = applyMove (head moves2) taggedState2
 
-                      (b1, w1) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState1
-                      (b2, w2) = actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState2
+                      (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
+                      (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
                   in
                       [ testCase "initial disk counts" $  
                         (b1, w1) @?= (32, 0) 

@@ -48,10 +48,9 @@ import Position ( Position, PosRow(..), makeValidPosition, adjacentPositions, po
 import BlackWhite ( BlackWhite(..), makeBlackWhite, blacksWhites )
 import Lib ( mapTakeWhile ) 
  
+newtype RadiatingPosRows = RadiatingPosRows [PosRow] deriving (Eq, Show)
 
 data EmptySquare = EmptySquare Position RadiatingPosRows
-
-newtype RadiatingPosRows = RadiatingPosRows [PosRow] deriving (Eq, Show)
 
 data FilledSquare = FilledSquare Disk EmptySquare deriving (Eq)
 
@@ -62,11 +61,11 @@ data Tagged_Square
 
 newtype Board = Board (Array (Int, Int) Tagged_Square) deriving (Eq, Show)
 
-data Move = Move Color EmptySquare Outflanks deriving (Eq, Show)
+newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show)
 
 newtype Outflanks = Outflanks [FilledRow] deriving (Eq, Show)
 
-newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show)
+data Move = Move Color EmptySquare Outflanks deriving (Eq, Show)
 
 ------------------
 
@@ -247,20 +246,20 @@ outflanks :: Color -> EmptySquare -> Board -> [FilledRow]
 outflanks color (EmptySquare _ (RadiatingPosRows posRows)) board =
     posRows
         & map (\ posRow -> contiguousFilledRow posRow board)
-        & filter (\ filledRow -> isHeadColored toggledColor filledRow && isTailHaveAnyColor color filledRow)
+        & filter (\ filledRow -> isFilledRowHead_Colored toggledColor filledRow && isFilledRowTail_ContainColor color filledRow)
         & map (\ (FilledRow xs) -> FilledRow $ takeWhile (\ x -> isSquareColored toggledColor x) xs)
             where toggledColor = toggleColor color
 
 
-isHeadColored :: Color -> FilledRow -> Bool
-isHeadColored color (FilledRow row) =
+isFilledRowHead_Colored :: Color -> FilledRow -> Bool
+isFilledRowHead_Colored color (FilledRow row) =
     case headMay row of
         Just square -> isSquareColored color square
         Nothing -> False
 
 
-isTailHaveAnyColor :: Color -> FilledRow -> Bool
-isTailHaveAnyColor color (FilledRow row) =
+isFilledRowTail_ContainColor :: Color -> FilledRow -> Bool
+isFilledRowTail_ContainColor color (FilledRow row) =
     case tailMay row of
         Just squares -> any (isSquareColored color) squares
         Nothing -> False

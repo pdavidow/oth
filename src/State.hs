@@ -23,7 +23,7 @@ module State
     , nextMoveColor_FromMidState
     , mbPriorMove_FromTaggedState
     , actual_NextMoves_FromTaggedState
-    , actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState
+    , actual_UnusedDiskCounts_FromTaggedState_BlackWhite
     , actual_mbPriorMove_FromTaggedState
     )   
     where
@@ -38,7 +38,7 @@ import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard,
 import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom, applyToUnusedDiskCounts )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isValidCoords, makeValidPosition, posCoords )
-import BlackWhite ( blacksWhites )
+import BlackWhite ( BlackWhite, makeBlackWhite, blacksWhites )
 
 
 data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
@@ -146,7 +146,7 @@ applyMove move taggedState =
         case taggedState of
             Tagged_StartState _ -> processMidState makeMidState
             Tagged_MidState _   -> processMidState makeMidState
-            Tagged_EndState _   -> taggedState
+            Tagged_EndState _   -> taggedState -- should never get here
 
 
 processMidState :: MidState -> Tagged_State
@@ -221,8 +221,8 @@ board_FromTaggedState taggedState =
     x where (CoreState _ _ x) = coreState_FromTaggedState taggedState
 
 
-blackAndWhiteUnusedDiskCounts_FromTaggedState :: Tagged_State -> (BlackUnusedDiskCount, WhiteUnusedDiskCount)
-blackAndWhiteUnusedDiskCounts_FromTaggedState taggedState =
+unusedDiskCounts_FromTaggedState :: Tagged_State -> (BlackUnusedDiskCount, WhiteUnusedDiskCount)
+unusedDiskCounts_FromTaggedState taggedState =
     (b, w) 
         where (CoreState b w _) = coreState_FromTaggedState taggedState
 
@@ -273,10 +273,10 @@ actual_NextMoves_FromTaggedState taggedState =
         Tagged_EndState _                                -> []
         
     
-actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState :: Tagged_State -> (Int, Int)
-actual_BlackAndWhiteUnusedDiskCounts_FromTaggedState taggedState =
-    (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b, UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
-        where (b, w) = blackAndWhiteUnusedDiskCounts_FromTaggedState taggedState
+actual_UnusedDiskCounts_FromTaggedState_BlackWhite :: Tagged_State -> BlackWhite Int
+actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
+    makeBlackWhite (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b) (UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
+        where (b, w) = unusedDiskCounts_FromTaggedState taggedState
 
 
 ---------------------------------------------------------------------------------------------
