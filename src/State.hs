@@ -25,6 +25,7 @@ module State
     , actual_NextMoves_FromTaggedState
     , actual_UnusedDiskCounts_FromTaggedState_BlackWhite
     , actual_mbPriorMove_FromTaggedState
+    , undoStateForColor
     )   
     where
 
@@ -32,6 +33,7 @@ import Data.Maybe ( mapMaybe )
 import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
+import qualified Data.List.NonEmpty as NE ( NonEmpty, fromList, head, init, last, length, reverse, dropWhile )
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
@@ -145,8 +147,8 @@ applyMove move taggedState =
     in
         case taggedState of
             Tagged_StartState _ -> processMidState makeMidState
-            Tagged_MidState _   -> processMidState makeMidState
-            Tagged_EndState _   -> taggedState -- should never get here
+            Tagged_MidState   _ -> processMidState makeMidState
+            Tagged_EndState   _ -> taggedState -- should never get here
 
 
 processMidState :: MidState -> Tagged_State
@@ -235,6 +237,14 @@ coreState_FromTaggedState taggedState =
         Tagged_EndState (EndState _ _ x)     -> x
 
 
+colorResultingInTaggedState :: Tagged_State -> Color
+colorResultingInTaggedState taggedState =
+    case taggedState of
+        Tagged_StartState (StartState color _ _)                      -> color
+        Tagged_MidState (MidState (PriorMove (Move color _ _)) _ _ _) -> color
+        Tagged_EndState (EndState (PriorMove (Move color _ _)) _ _)   -> color
+
+
 nextMoveColor_FromTaggedState :: Tagged_State -> Maybe Color
 nextMoveColor_FromTaggedState taggedState =  
     case taggedState of
@@ -277,6 +287,69 @@ actual_UnusedDiskCounts_FromTaggedState_BlackWhite :: Tagged_State -> BlackWhite
 actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
     makeBlackWhite (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b) (UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
         where (b, w) = unusedDiskCounts_FromTaggedState taggedState
+
+
+undoStateForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
+undoStateForColor color xs = 
+    let
+        lastState = NE.last xs
+
+        isLastStateForfeit :: Bool
+        isLastStateForfeit = 
+            case lastState of
+                Tagged_StartState _ ->
+                    False
+
+                Tagged_MidState (MidState _ midStatus _ _) ->
+                    case midStatus of
+                        Normal -> False
+                        ForfeitTurn_Rule2 -> True
+                        TransferDisk_Rule9 -> False
+
+                Tagged_EndState _ -> 
+                    False
+    in
+        if NE.length xs == 1 then 
+            Nothing
+        else if NE.length xs == 2 then
+            let 
+                headState = NE.head xs
+            in
+                case headState of
+                    Tagged_StartState (StartState color' _ _) -> -- always the case, by definition
+                        if color == color' then
+                            Just $ NE.fromList [headState]
+                        else
+                            Nothing
+    
+                    Tagged_MidState _ -> 
+                        Nothing -- should never get here
+
+                    Tagged_EndState _ -> 
+                        Nothing -- should never get here
+        else if isLastStateForfeit then
+            Just $ NE.fromList $ NE.init xs
+        else
+            case lastState of
+                Tagged_StartState _ -> 
+                    Nothing -- should never get here
+
+                Tagged_MidState _ ->
+                    let
+                        toggledColor = toggleColor color
+                        
+                        f :: Tagged_State -> Bool
+                        f = \ x -> colorResultingInTaggedState x == toggledColor
+                    in
+                        NE.reverse xs
+                            & NE.dropWhile f
+                            & drop 1
+                            & NE.fromList -- non empty by definition
+                            & NE.reverse
+                            & Just
+
+                Tagged_EndState _ -> 
+                    Nothing -- should never get here
 
 
 ---------------------------------------------------------------------------------------------

@@ -4,12 +4,13 @@ module Sequencer
     where 
  
 import Safe ( atDef )
-import Data.Maybe ( fromMaybe )
+import Data.Maybe ( fromMaybe, isJust )
 import Data.List ( find )
+import qualified Data.List.NonEmpty as NE ( NonEmpty, last, fromList, toList )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState )
+import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoStateForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
 import Position ( Position, makeValidPosition )
@@ -17,42 +18,46 @@ import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStat
 import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, bestNextMove, searchPhrase )
 import Lib ( getValidChoice ) 
 
-
-moveSequence :: (PlayerBlack, PlayerWhite) -> Tagged_State -> IO ()
-moveSequence players taggedState = do       
+ 
+moveSequence :: (PlayerBlack, PlayerWhite) -> NE.NonEmpty Tagged_State -> IO ()
+moveSequence players history = do 
+    let taggedState = NE.last history     
     let taggedPlayer = nextPlayer players taggedState
     putStrLn ""
     putStrLn $ gameStateDisplay Nothing taggedState
 
-    move <- case playerTypeFrom taggedPlayer of
+    (move, history') <- case playerTypeFrom taggedPlayer of
         Person suggestionSearchDepth -> do
-            moveIndex <- personChoose (playerColor taggedPlayer) suggestionSearchDepth taggedState
-            return $ atDef dummyMove (actual_NextMoves_FromTaggedState taggedState) moveIndex
+            (moveIndex, history') <- personChoose (playerColor taggedPlayer) suggestionSearchDepth history
+            let move = atDef dummyMove (actual_NextMoves_FromTaggedState $ NE.last history') moveIndex
+            return $ (move, history')
 
         Computer strategy -> do 
             putStrLn $ "\nComputer (White) is working (" ++ (strategyDisplay strategy) ++ ") ...\n"
-            computerChoose strategy taggedState
+            move <- computerChoose strategy taggedState
+            return $ (move, history)
 
-    advance players move taggedState
+    advance players move history'
  
 
-advance :: (PlayerBlack, PlayerWhite) -> Move -> Tagged_State -> IO ()
-advance players move taggedState = do    
-    let nextTaggedState = applyMove move taggedState
+advance :: (PlayerBlack, PlayerWhite) -> Move -> NE.NonEmpty Tagged_State -> IO ()
+advance players move history = do    
+    let taggedState = applyMove move $ NE.last history
+    let history' = NE.fromList $ (NE.toList history) ++ [taggedState]
+    
+    case taggedState of 
+        Tagged_StartState _ -> moveSequence players history' -- should never get here
 
-    case nextTaggedState of 
-        Tagged_StartState _ -> moveSequence players nextTaggedState -- should never get here
-
-        Tagged_MidState _   -> moveSequence players nextTaggedState
+        Tagged_MidState _   -> moveSequence players history'
 
         Tagged_EndState x -> do
-            putStrLn $ gameStateDisplay Nothing nextTaggedState
+            putStrLn $ gameStateDisplay Nothing taggedState
             putStrLn ""
             putStrLn $ gameSummaryDisplay x
             putStrLn ""
             putStrLn "########################################"
             putStrLn "FYI, here are the flip-counts:\n"
-            putStrLn $ boardWithFlipCountDisplay $ board_FromTaggedState nextTaggedState
+            putStrLn $ boardWithFlipCountDisplay $ board_FromTaggedState taggedState
             putStrLn "########################################"
             return ()
 
@@ -64,38 +69,66 @@ nextPlayer (pb, pw) taggedState =
         White -> Tagged_PlayerWhite pw
 
 
-personChoose :: Color -> SuggestionSearchDepth -> Tagged_State -> IO Int
-personChoose color suggestionSearchDepth taggedState = do
-    let moves = actual_NextMoves_FromTaggedState taggedState
+personChoose :: Color -> SuggestionSearchDepth -> NE.NonEmpty Tagged_State -> IO (Int, NE.NonEmpty Tagged_State)
+personChoose color suggestionSearchDepth history = do
+    let moves = actual_NextMoves_FromTaggedState $ NE.last history   
     let numberedMovesWithPos = movePosChoices moves
-    n <- handlePersonChoose color numberedMovesWithPos moves suggestionSearchDepth taggedState
-    return n
+    (n, history') <- handlePersonChoose color numberedMovesWithPos moves suggestionSearchDepth history
+    return (n, history')
 
 
-handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> Tagged_State -> IO Int
-handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth searchDepth) taggedState  = do
-    n <- getMoveChoice color numberedMovesWithPos
+handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> NE.NonEmpty Tagged_State -> IO (Int, NE.NonEmpty Tagged_State)
+handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth searchDepth) history = do
+    let taggedState = NE.last history     
+    let undo = undoStateForColor color history 
+    let isUndoable = isJust undo
+    n <- getMoveChoice color isUndoable numberedMovesWithPos
 
     if n == choiceNumberFor_DisplayChoicesOnBoard then do
         putStrLn ""
         putStrLn $ gameStateDisplay (Just numberedMovesWithPos) taggedState
-        handlePersonChoose color numberedMovesWithPos moves s taggedState 
+        handlePersonChoose color numberedMovesWithPos moves s history
     else if n == choiceNumberFor_Suggest then do
         let pos = movePos $ bestNextMove searchDepth taggedState
         let index = fst $ fromMaybe (0, makeValidPosition 1 1) $ find (\(_, pos') -> pos == pos') numberedMovesWithPos
         putStrLn $ "\nComputer suggests (after " ++ searchPhrase searchDepth ++ "): " ++ movePosChoicesNomenclature [(index, pos)]
-        handlePersonChoose color numberedMovesWithPos moves s taggedState 
+        handlePersonChoose color numberedMovesWithPos moves s history
+    else if n == choiceNumberFor_Undo then do
+        let history' = fromMaybe history undo -- should never use default
+        putStrLn ""
+        putStrLn $ gameStateDisplay Nothing $ NE.last history'
+        personChoose color s history' -- color remains the same for undo
     else do 
-        return $ n - 1 -- index is zero-based
+        return $ (n - 1, history) -- index is zero-based
 
 
-getMoveChoice :: Color -> [(Int, Position)] -> IO Int
-getMoveChoice color numberedMovesWithPos = do
-    let posTags = Prelude.map fst numberedMovesWithPos
-    let options = choiceNumberFor_DisplayChoicesOnBoard : choiceNumberFor_Suggest : posTags
-    let nomenclature = movePosChoicesNomenclature numberedMovesWithPos
-    let prompt = (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest) " ++ nomenclature ++ "\nEnter choice"
+getMoveChoice :: Color -> Bool -> [(Int, Position)] -> IO Int
+getMoveChoice color isUndoable numberedMovesWithPos = do
+    let options = optionsForMoveChoice isUndoable numberedMovesWithPos
+    let prompt = promptForMoveChoice color isUndoable numberedMovesWithPos
     getValidChoice prompt options
+
+
+optionsForMoveChoice :: Bool -> [(Int, Position)] -> [Int]
+optionsForMoveChoice isUndoable numberedMovesWithPos = 
+    let 
+        posTags = Prelude.map fst numberedMovesWithPos
+    in
+        if isUndoable then
+            choiceNumberFor_DisplayChoicesOnBoard : choiceNumberFor_Suggest : choiceNumberFor_Undo : posTags
+        else
+            choiceNumberFor_DisplayChoicesOnBoard : choiceNumberFor_Suggest : posTags
+
+
+promptForMoveChoice :: Color -> Bool -> [(Int, Position)] -> String
+promptForMoveChoice color isUndoable numberedMovesWithPos = 
+    let 
+        nomenclature = movePosChoicesNomenclature numberedMovesWithPos
+    in
+        if isUndoable then 
+            (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest, " ++ show choiceNumberFor_Undo ++ ":undo) " ++ nomenclature ++ "\nEnter choice"
+        else 
+            (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest) " ++ nomenclature ++ "\nEnter choice"
 
 
 choiceNumberFor_DisplayChoicesOnBoard :: Int
@@ -106,3 +139,8 @@ choiceNumberFor_DisplayChoicesOnBoard =
 choiceNumberFor_Suggest :: Int
 choiceNumberFor_Suggest = 
     100
+
+
+choiceNumberFor_Undo :: Int
+choiceNumberFor_Undo = 
+    101  

@@ -1,5 +1,7 @@
 module Main where
 
+import qualified Data.List.NonEmpty as NE ( fromList )
+
 import Player ( makePlayerBlack, makePlayerWhite )
 import PlayerType ( PlayerType(..) )
 import Sequencer ( moveSequence )
@@ -14,11 +16,11 @@ main = do
     blackPlayerType <- getBlack_PlayerType
     whitePlayerType <- getWhite_PlayerType
 
-    moveSequence 
+    moveSequence  
         ( makePlayerBlack blackPlayerType
         , makePlayerWhite whitePlayerType
         )
-        (Tagged_StartState makeStartState)  
+        (NE.fromList $ [Tagged_StartState makeStartState])
 
 
 getPerson :: Color -> IO PlayerType 
