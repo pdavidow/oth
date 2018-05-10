@@ -13,6 +13,7 @@ module State
     , GameSummary(..)
     , Winner(..)
     , makeStartState
+    , makeHistory
     , priorMoveColor
     , applyMoveOnHistory
     , applyMoveOnState
@@ -26,11 +27,12 @@ module State
     , actual_NextMoves_FromTaggedState
     , actual_UnusedDiskCounts_FromTaggedState_BlackWhite
     , actual_mbPriorMove_FromTaggedState
+    , undoHistoryOnce
     , undoHistoryOnceForColor
     )   
     where
 
-import Data.Maybe ( mapMaybe )
+import Data.Maybe ( fromMaybe, mapMaybe )
 import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
@@ -290,6 +292,11 @@ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
         where (b, w) = unusedDiskCounts_FromTaggedState taggedState
 
 
+makeHistory :: NE.NonEmpty Tagged_State
+makeHistory =
+    NE.fromList $ [Tagged_StartState makeStartState]
+
+
 applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> NE.NonEmpty Tagged_State
 applyMoveOnHistory move history = 
     let
@@ -298,6 +305,12 @@ applyMoveOnHistory move history =
     in
         NE.fromList $ (NE.toList history) ++ [taggedState]
 
+
+undoHistoryOnce :: NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
+undoHistoryOnce history = 
+    undoHistoryOnceForColor color history
+        where color = fromMaybe Black $ nextMoveColor_FromTaggedState $ NE.last history -- should never use default
+        
 
 undoHistoryOnceForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
 undoHistoryOnceForColor color history = 

@@ -1,11 +1,9 @@
 module Main where
 
-import qualified Data.List.NonEmpty as NE ( fromList )
-
 import Player ( makePlayerBlack, makePlayerWhite )
 import PlayerType ( PlayerType(..) )
 import Sequencer ( moveSequence )
-import State ( Tagged_State(..), makeStartState )
+import State ( makeHistory ) 
 import Engine ( Strategy(..), SearchDepth(..), SuggestionSearchDepth(..) )
 import Disk ( Color(..) )
 import Lib ( getValidChoice )
@@ -20,7 +18,7 @@ main = do
         ( makePlayerBlack blackPlayerType
         , makePlayerWhite whitePlayerType
         )
-        (NE.fromList $ [Tagged_StartState makeStartState])
+        makeHistory
 
 
 getPerson :: Color -> IO PlayerType 

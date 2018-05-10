@@ -7,11 +7,13 @@ import Test.Tasty.HUnit
  
 import Data.Function ( (&) )
 import Data.List ( foldl' )
+import Data.Maybe ( fromJust )
+import qualified Data.List.NonEmpty as NE ( last )
  
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMoveOnState, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState)
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMoveOnState, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce )
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
@@ -548,7 +550,165 @@ unitTests = testGroup "Unit tests" $
 
                       , testCase "Go from TransferDisk_Rule9 to Normal" $ 
                         (midStatus2, midStatus3) @?= (TransferDisk_Rule9, Normal)   
-                      ]   
+                      ]
+
+              , testGroup "Undo" $
+                  [ testGroup "Actual game (not contrived)" $
+                      let
+                          history1 = makeHistory
+
+                          taggedState1 = NE.last history1
+                          move1 = head $ actual_NextMoves_FromTaggedState taggedState1 -- black C4
+                          history2 = applyMoveOnHistory move1 history1 
+
+                          taggedState2 = NE.last history2
+                          move2 = head $ actual_NextMoves_FromTaggedState taggedState2 -- white C3
+                          history3 = applyMoveOnHistory move2 history2     
+                          
+                          taggedState3 = NE.last history3
+                          move3 = head $ actual_NextMoves_FromTaggedState taggedState3 -- black C2
+                          history4 = applyMoveOnHistory move3 history3    
+                          
+                          taggedState4 = NE.last history4
+                          move4 = head $ actual_NextMoves_FromTaggedState taggedState4 -- white B2
+                          history5 = applyMoveOnHistory move4 history4    
+                          
+                          taggedState5 = NE.last history5
+                          move5 = head $ actual_NextMoves_FromTaggedState taggedState5 -- black A2
+                          history6 = applyMoveOnHistory move5 history5 
+
+                          taggedState6 = NE.last history6
+                          move6 = head $ actual_NextMoves_FromTaggedState taggedState6 -- white A1
+                          history7 = applyMoveOnHistory move6 history6    
+                          
+                          taggedState7 = NE.last history7
+                          move7 = head $ actual_NextMoves_FromTaggedState taggedState7 -- black D3
+                          history8 = applyMoveOnHistory move7 history7    
+                          
+                          taggedState8 = NE.last history8
+                          move8 = head $ actual_NextMoves_FromTaggedState taggedState8 -- white A3
+                          history9 = applyMoveOnHistory move8 history8  
+                          
+                          taggedState9 = NE.last history9
+                          move9 = head $ actual_NextMoves_FromTaggedState taggedState9 -- black B3
+                          history10 = applyMoveOnHistory move9 history9 
+
+                          taggedState10 = NE.last history10
+                          move10 = head $ actual_NextMoves_FromTaggedState taggedState10 -- white D2
+                          history11 = applyMoveOnHistory move10 history10     
+                          
+                          taggedState11 = NE.last history11
+                          move11 = head $ actual_NextMoves_FromTaggedState taggedState11 -- black B1
+                          history12 = applyMoveOnHistory move11 history11    
+                          
+                          taggedState12 = NE.last history12
+                          move12 = head $ actual_NextMoves_FromTaggedState taggedState12 -- white C1
+                          history13 = applyMoveOnHistory move12 history12  
+                          
+                          taggedState13 = NE.last history13
+                          move13 = head $ actual_NextMoves_FromTaggedState taggedState13 -- black D1
+                          history14 = applyMoveOnHistory move13 history13
+
+                          taggedState14 = NE.last history14
+                          move14 = head $ actual_NextMoves_FromTaggedState taggedState14 -- white E1
+                          history15 = applyMoveOnHistory move14 history14     
+                          
+                          taggedState15 = NE.last history15
+                          move15 = head $ actual_NextMoves_FromTaggedState taggedState15 -- black E6
+                          history16 = applyMoveOnHistory move15 history15    
+                          
+                          taggedState16 = NE.last history16
+                          move16 = head $ actual_NextMoves_FromTaggedState taggedState16 -- white E2
+                          history17 = applyMoveOnHistory move16 history16  
+                          
+                          taggedState17 = NE.last history17
+                          move17 = head $ actual_NextMoves_FromTaggedState taggedState17 -- black F1
+                          history18 = applyMoveOnHistory move17 history17
+
+                          taggedState18 = NE.last history18
+                          move18 = head $ actual_NextMoves_FromTaggedState taggedState18 -- white F2
+                          history19 = applyMoveOnHistory move18 history18     
+                          
+                          taggedState19 = NE.last history19
+                          move19 = head $ actual_NextMoves_FromTaggedState taggedState19 -- black F3
+                          history20 = applyMoveOnHistory move19 history19    
+                          
+                          taggedState20 = NE.last history20
+                          move20 = head $ actual_NextMoves_FromTaggedState taggedState20 -- white G1
+                          history21 = applyMoveOnHistory move20 history20
+                          
+                          taggedState21 = NE.last history21                              -- forfeit
+                          move21 = head $ actual_NextMoves_FromTaggedState taggedState21 -- white E3 
+                          history22 = applyMoveOnHistory move21 history21
+
+                          taggedState22 = NE.last history22                              -- forfeit
+                          move22 = head $ actual_NextMoves_FromTaggedState taggedState22 -- white F4
+                          history23 = applyMoveOnHistory move22 history22     
+                          
+                          taggedState23 = NE.last history23
+                          move23 = head $ actual_NextMoves_FromTaggedState taggedState23 -- black G2
+                          history24 = applyMoveOnHistory move23 history23    
+                          
+                          taggedState24 = NE.last history24
+                          move24 = head $ actual_NextMoves_FromTaggedState taggedState24 -- white G3
+                          history25 = applyMoveOnHistory move24 history24  
+                          
+                          taggedState25 = NE.last history25
+                          move25 = head $ actual_NextMoves_FromTaggedState taggedState25 -- black H1
+                          history26 = applyMoveOnHistory move25 history25                           
+                      in
+                          [ testCase "undo history1" $ 
+                              let
+                                  undone = undoHistoryOnce history1
+                              in
+                                  undone @?= Nothing
+                          , testCase "undo history2" $ 
+                              let
+                                  undone = undoHistoryOnce history2
+                              in
+                                  undone @?= Nothing     
+                          , testCase "undo history3" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history3
+                              in
+                                  undone @?= history1  
+                          , testCase "undo history4" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history4
+                              in
+                                  undone @?= history2       
+                          , testCase "undo history5" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history5
+                              in
+                                  undone @?= history3   
+                          , testCase "undo history21" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history21
+                              in
+                                  undone @?= history20     
+                          , testCase "undo history22" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history22
+                              in
+                                  undone @?= history21    
+                          , testCase "undo history23" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history23
+                              in
+                                  undone @?= history19    
+                          , testCase "undo history24" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history24
+                              in
+                                  undone @?= history22        
+                          , testCase "undo history25" $ 
+                              let
+                                  undone = fromJust $ undoHistoryOnce history25
+                              in
+                                  undone @?= history23                                                                                                                                                                                                                                                                                         
+                          ]
+                  ]   
               -------------------------------------------------------------------------------------------                        
               -- to test this section, temp uncomment out -- but need to expose normally unexposed Board.flipAt       
               -------------------------------------------------------------------------------------------  
