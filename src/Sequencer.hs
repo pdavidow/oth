@@ -6,11 +6,11 @@ module Sequencer
 import Safe ( atDef )
 import Data.Maybe ( fromMaybe, isJust )
 import Data.List ( find )
-import qualified Data.List.NonEmpty as NE ( NonEmpty, last, fromList, toList )
+import qualified Data.List.NonEmpty as NE ( NonEmpty, last )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import State ( Tagged_State(..), applyMove, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoStateForColor )
+import State ( Tagged_State(..), applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
 import Position ( Position, makeValidPosition )
@@ -42,8 +42,8 @@ moveSequence players history = do
 
 advance :: (PlayerBlack, PlayerWhite) -> Move -> NE.NonEmpty Tagged_State -> IO ()
 advance players move history = do    
-    let taggedState = applyMove move $ NE.last history
-    let history' = NE.fromList $ (NE.toList history) ++ [taggedState]
+    let history' = applyMoveOnHistory move history
+    let taggedState = NE.last history'
     
     case taggedState of 
         Tagged_StartState _ -> moveSequence players history' -- should never get here
@@ -80,8 +80,8 @@ personChoose color suggestionSearchDepth history = do
 handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> NE.NonEmpty Tagged_State -> IO (Int, NE.NonEmpty Tagged_State)
 handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth searchDepth) history = do
     let taggedState = NE.last history     
-    let undo = undoStateForColor color history 
-    let isUndoable = isJust undo
+    let mbHistory' = undoHistoryOnceForColor color history 
+    let isUndoable = isJust mbHistory'
     n <- getMoveChoice color isUndoable numberedMovesWithPos
 
     if n == choiceNumberFor_DisplayChoicesOnBoard then do
@@ -94,7 +94,7 @@ handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth sea
         putStrLn $ "\nComputer suggests (after " ++ searchPhrase searchDepth ++ "): " ++ movePosChoicesNomenclature [(index, pos)]
         handlePersonChoose color numberedMovesWithPos moves s history
     else if n == choiceNumberFor_Undo then do
-        let history' = fromMaybe history undo -- should never use default
+        let history' = fromMaybe history mbHistory' -- should never use default
         putStrLn ""
         putStrLn $ gameStateDisplay Nothing $ NE.last history'
         personChoose color s history' -- color remains the same for undo

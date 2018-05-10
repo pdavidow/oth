@@ -14,7 +14,8 @@ module State
     , Winner(..)
     , makeStartState
     , priorMoveColor
-    , applyMove
+    , applyMoveOnHistory
+    , applyMoveOnState
     , gameSummary
     , winner
     , board_FromTaggedState 
@@ -25,7 +26,7 @@ module State
     , actual_NextMoves_FromTaggedState
     , actual_UnusedDiskCounts_FromTaggedState_BlackWhite
     , actual_mbPriorMove_FromTaggedState
-    , undoStateForColor
+    , undoHistoryOnceForColor
     )   
     where
 
@@ -33,7 +34,7 @@ import Data.Maybe ( mapMaybe )
 import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
-import qualified Data.List.NonEmpty as NE ( NonEmpty, fromList, head, init, last, length, reverse, dropWhile )
+import qualified Data.List.NonEmpty as NE ( NonEmpty, dropWhile, fromList, head, init, last, length, reverse, toList )
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
@@ -100,7 +101,7 @@ instance Game_tree Tagged_State
     children :: Tagged_State -> [Tagged_State]
     children taggedState =
         actual_NextMoves_FromTaggedState taggedState
-            & map (\ move -> applyMove move taggedState)
+            & map (\ move -> applyMoveOnState move taggedState)
 
 ------------------
 
@@ -131,8 +132,8 @@ isZeroUnusedDiskCount color (CoreState b w _) =
         White -> isZeroCount $ Tagged_WhiteUnusedDiskCount w
 
 
-applyMove :: Move -> Tagged_State -> Tagged_State
-applyMove move taggedState =
+applyMoveOnState :: Move -> Tagged_State -> Tagged_State
+applyMoveOnState move taggedState =
     let
         makeMidState :: MidState
         makeMidState =
@@ -289,10 +290,19 @@ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
         where (b, w) = unusedDiskCounts_FromTaggedState taggedState
 
 
-undoStateForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
-undoStateForColor color xs = 
+applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> NE.NonEmpty Tagged_State
+applyMoveOnHistory move history = 
     let
-        lastState = NE.last xs
+        -- todo validate move
+        taggedState = applyMoveOnState move $ NE.last history
+    in
+        NE.fromList $ (NE.toList history) ++ [taggedState]
+
+
+undoHistoryOnceForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
+undoHistoryOnceForColor color history = 
+    let
+        lastState = NE.last history
 
         isLastStateForfeit :: Bool
         isLastStateForfeit = 
@@ -309,11 +319,11 @@ undoStateForColor color xs =
                 Tagged_EndState _ -> 
                     False
     in
-        if NE.length xs == 1 then 
+        if NE.length history == 1 then 
             Nothing
-        else if NE.length xs == 2 then
+        else if NE.length history == 2 then
             let 
-                headState = NE.head xs
+                headState = NE.head history
             in
                 case headState of
                     Tagged_StartState (StartState color' _ _) -> -- always the case, by definition
@@ -328,7 +338,7 @@ undoStateForColor color xs =
                     Tagged_EndState _ -> 
                         Nothing -- should never get here
         else if isLastStateForfeit then
-            Just $ NE.fromList $ NE.init xs
+            Just $ NE.fromList $ NE.init history
         else
             case lastState of
                 Tagged_StartState _ -> 
@@ -341,7 +351,8 @@ undoStateForColor color xs =
                         f :: Tagged_State -> Bool
                         f = \ x -> colorResultingInTaggedState x == toggledColor
                     in
-                        NE.reverse xs
+                        history
+                            & NE.reverse
                             & NE.dropWhile f
                             & drop 1
                             & NE.fromList -- non empty by definition

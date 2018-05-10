@@ -11,7 +11,7 @@ import Data.List ( foldl' )
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMove, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState)
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMoveOnState, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState)
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
@@ -418,15 +418,15 @@ unitTests = testGroup "Unit tests" $
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
 
-            taggedState2 = applyMove move1 taggedState1
+            taggedState2 = applyMoveOnState move1 taggedState1
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
 
-            taggedState3 = applyMove move2 taggedState2
+            taggedState3 = applyMoveOnState move2 taggedState2
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
 
-            taggedState4 = applyMove move3 taggedState3          
+            taggedState4 = applyMoveOnState move3 taggedState3          
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
@@ -482,7 +482,7 @@ unitTests = testGroup "Unit tests" $
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      (Tagged_EndState (EndState _ endReason _)) = applyMove (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      (Tagged_EndState (EndState _ endReason _)) = applyMoveOnState (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
                         endReason @?= NoUnusedDisksForBoth
@@ -497,7 +497,7 @@ unitTests = testGroup "Unit tests" $
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                       move = Move Black (head $ emptySquares board') $ Outflanks []
 
-                      (Tagged_EndState (EndState _ endStatus _)) = applyMove move taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      (Tagged_EndState (EndState _ endStatus _)) = applyMoveOnState move taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
                         endStatus @?= NoValidMoves
@@ -512,7 +512,7 @@ unitTests = testGroup "Unit tests" $
                         taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                        taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = applyMove (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                        taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = applyMoveOnState (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                     in
                         [ testCase "First move results in: Tagged_MidState, ForfeitTurn_Rule2" $ 
                             midStatus @?= ForfeitTurn_Rule2
@@ -532,10 +532,10 @@ unitTests = testGroup "Unit tests" $
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = applyMove (head moves1) taggedState1
+                      taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = applyMoveOnState (head moves1) taggedState1
                       moves2 = actual_NextMoves_FromTaggedState taggedState2
           
-                      taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = applyMove (head moves2) taggedState2
+                      taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = applyMoveOnState (head moves2) taggedState2
 
                       (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
                       (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
