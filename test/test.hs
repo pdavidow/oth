@@ -8,7 +8,7 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
 import Data.Maybe ( fromJust )
-import qualified Data.List.NonEmpty as NE ( fromList, last )
+import qualified Data.List.NonEmpty as NE ( filter, fromList, last )
  
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
@@ -676,55 +676,63 @@ unitTests = testGroup "Unit tests" $
                                   undone = undoHistoryOnce history1
                               in
                                   undone @?= Nothing
+
                           , testCase "undo history2" $ 
                               let
                                   undone = undoHistoryOnce history2
                               in
                                   undone @?= Nothing     
+
                           , testCase "undo history3" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history3
                               in
                                   undone @?= history1  
+
                           , testCase "undo history4" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history4
                               in
-                                  undone @?= history2       
+                                  undone @?= history2      
+
                           , testCase "undo history5" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history5
                               in
                                   undone @?= history3   
+
                           , testCase "undo history21" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history21
                               in
-                                  undone @?= history20     
+                                  undone @?= history20    
+
                           , testCase "undo history22" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history22
                               in
                                   undone @?= history21    
+
                           , testCase "undo history23" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history23
                               in
-                                  undone @?= history19    
+                                  undone @?= history19  
+
                           , testCase "undo history24" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history24
                               in
-                                  undone @?= history22        
+                                  undone @?= history22     
+
                           , testCase "undo history25" $ 
                               let
                                   undone = fromJust $ undoHistoryOnce history25
                               in
                                   undone @?= history23   
+                                  
                           , testCase "forfeits" $ 
-                              ( isForfeitTurn taggedState21 && 
-                                isForfeitTurn taggedState22
-                              ) @?= True                                                                                                                                                                                                                                                                                   
+                              NE.filter isForfeitTurn history26 @?= [taggedState21, taggedState22]                                                                                                                                                                                                                                                                                 
                           ]
                   ]   
                   
