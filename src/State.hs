@@ -299,11 +299,8 @@ makeHistory =
 
 applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> NE.NonEmpty Tagged_State
 applyMoveOnHistory move history = 
-    let
-        -- todo validate move
-        taggedState = applyMoveOnState move $ NE.last history
-    in
-        NE.fromList $ (NE.toList history) ++ [taggedState]
+    NE.fromList $ (NE.toList history) ++ [taggedState]
+        where taggedState = applyMoveOnState move $ NE.last history
 
 
 undoHistoryOnce :: NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
