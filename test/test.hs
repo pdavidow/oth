@@ -8,12 +8,12 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
 import Data.Maybe ( fromJust )
-import qualified Data.List.NonEmpty as NE ( last )
+import qualified Data.List.NonEmpty as NE ( fromList, last )
  
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), applyMoveOnState, makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce )
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn )
 import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
@@ -416,19 +416,24 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module State" $ 
         let
-            taggedState1 = Tagged_StartState makeStartState
+            history1 = makeHistory
+
+            taggedState1 = NE.last history1
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
+            history2 = applyMoveOnHistory move1 history1 
 
-            taggedState2 = applyMoveOnState move1 taggedState1
+            taggedState2 = NE.last history2
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
+            history3 = applyMoveOnHistory move2 history2     
 
-            taggedState3 = applyMoveOnState move2 taggedState2
+            taggedState3 = NE.last history3
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
+            history4 = applyMoveOnHistory move3 history3 
 
-            taggedState4 = applyMoveOnState move3 taggedState3          
+            taggedState4 = NE.last history4         
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
@@ -482,9 +487,11 @@ unitTests = testGroup "Unit tests" $
                       (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
+                      history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      (Tagged_EndState (EndState _ endReason _)) = applyMoveOnState (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      history2 = applyMoveOnHistory (head moves1) history1 
+                      (Tagged_EndState (EndState _ endReason _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
                         endReason @?= NoUnusedDisksForBoth
@@ -497,9 +504,11 @@ unitTests = testGroup "Unit tests" $
                       board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
+                      history1 = NE.fromList $ [taggedState1]
                       move = Move Black (head $ emptySquares board') $ Outflanks []
 
-                      (Tagged_EndState (EndState _ endStatus _)) = applyMoveOnState move taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                      history2 = applyMoveOnHistory move history1 
+                      (Tagged_EndState (EndState _ endStatus _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
                         endStatus @?= NoValidMoves
@@ -512,9 +521,11 @@ unitTests = testGroup "Unit tests" $
                         board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                         taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
+                        history1 = NE.fromList $ [taggedState1]
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                        taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = applyMoveOnState (head moves1) taggedState1 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
+                        history2 = applyMoveOnHistory (head moves1) history1 
+                        taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                     in
                         [ testCase "First move results in: Tagged_MidState, ForfeitTurn_Rule2" $ 
                             midStatus @?= ForfeitTurn_Rule2
@@ -532,12 +543,15 @@ unitTests = testGroup "Unit tests" $
                       (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw
 
                       taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
+                      history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = applyMoveOnState (head moves1) taggedState1
+                      history2 = applyMoveOnHistory (head moves1) history1 
+                      taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = NE.last history2
                       moves2 = actual_NextMoves_FromTaggedState taggedState2
           
-                      taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = applyMoveOnState (head moves2) taggedState2
+                      history3 = applyMoveOnHistory (head moves2) history2
+                      taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = NE.last history3
 
                       (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
                       (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
@@ -706,9 +720,14 @@ unitTests = testGroup "Unit tests" $
                               let
                                   undone = fromJust $ undoHistoryOnce history25
                               in
-                                  undone @?= history23                                                                                                                                                                                                                                                                                         
+                                  undone @?= history23   
+                          , testCase "forfeits" $ 
+                              ( isForfeitTurn taggedState21 && 
+                                isForfeitTurn taggedState22
+                              ) @?= True                                                                                                                                                                                                                                                                                   
                           ]
                   ]   
+                  
               -------------------------------------------------------------------------------------------                        
               -- to test this section, temp uncomment out -- but need to expose normally unexposed Board.flipAt       
               -------------------------------------------------------------------------------------------  

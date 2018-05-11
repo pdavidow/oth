@@ -16,7 +16,6 @@ module State
     , makeHistory
     , priorMoveColor
     , applyMoveOnHistory
-    , applyMoveOnState
     , gameSummary
     , winner
     , board_FromTaggedState 
@@ -29,6 +28,7 @@ module State
     , actual_mbPriorMove_FromTaggedState
     , undoHistoryOnce
     , undoHistoryOnceForColor
+    , isForfeitTurn -- todo only used in testing
     )   
     where
 
@@ -316,21 +316,6 @@ undoHistoryOnceForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmp
 undoHistoryOnceForColor color history = 
     let
         lastState = NE.last history
-
-        isLastStateForfeit :: Bool
-        isLastStateForfeit = 
-            case lastState of
-                Tagged_StartState _ ->
-                    False
-
-                Tagged_MidState (MidState _ midStatus _ _) ->
-                    case midStatus of
-                        Normal -> False
-                        ForfeitTurn_Rule2 -> True
-                        TransferDisk_Rule9 -> False
-
-                Tagged_EndState _ -> 
-                    False
     in
         if NE.length history == 1 then 
             Nothing
@@ -350,7 +335,7 @@ undoHistoryOnceForColor color history =
 
                     Tagged_EndState _ -> 
                         Nothing -- should never get here
-        else if isLastStateForfeit then
+        else if isForfeitTurn lastState then
             Just $ NE.fromList $ NE.init history
         else
             case lastState of
@@ -374,6 +359,22 @@ undoHistoryOnceForColor color history =
 
                 Tagged_EndState _ -> 
                     Nothing -- should never get here
+
+
+isForfeitTurn :: Tagged_State -> Bool
+isForfeitTurn taggedState = 
+    case taggedState of
+        Tagged_StartState _ ->
+            False
+
+        Tagged_MidState (MidState _ midStatus _ _) ->
+            case midStatus of
+                Normal -> False
+                ForfeitTurn_Rule2 -> True
+                TransferDisk_Rule9 -> False
+
+        Tagged_EndState _ -> 
+            False
 
 
 ---------------------------------------------------------------------------------------------
