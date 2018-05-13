@@ -12,6 +12,7 @@ module State
     , EndStatus(..)
     , GameSummary(..)
     , Winner(..)
+    , MoveValidationError(..)
     , makeStartState
     , makeHistory
     , priorMoveColor
@@ -29,6 +30,7 @@ module State
     , undoHistoryOnce
     , undoHistoryOnceForColor
     , isForfeitTurn -- todo only used in testing
+    , nextMovesFrom -- todo only used in testing
     )   
     where
 
@@ -37,6 +39,7 @@ import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
 import qualified Data.List.NonEmpty as NE ( NonEmpty, dropWhile, fromList, head, init, last, length, reverse, toList )
+--import Data.Validation ( Validation , #)
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
@@ -82,6 +85,13 @@ data Winner
     | Tie
         deriving (Eq, Show)
 
+data MoveValidationError
+    = GameOver
+    | WrongColor
+    | NoAvailableDisk
+    | NotOutflanking
+        deriving (Eq, Show)
+
 ------------------
 
 instance Game_tree Tagged_State 
@@ -114,7 +124,7 @@ makeStartState =
         board = initialBoard
         nextMoves = nextMovesFrom startColor board
     in
-        StartState startColor nextMoves (CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board)
+        StartState startColor nextMoves $ CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board
 
 
 priorMoveColor :: PriorMove -> Color 
@@ -297,10 +307,43 @@ makeHistory =
     NE.fromList $ [Tagged_StartState makeStartState]
 
 
-applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> NE.NonEmpty Tagged_State
+validateMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> [MoveValidationError] 
+validateMoveOnHistory move history = 
+    let
+        lastState = NE.last history
+        (Move color emptySquare _) = move
+
+        isGameOver = 
+            case lastState of
+                Tagged_StartState _ -> False
+                Tagged_MidState   _ -> False
+                Tagged_EndState   _ -> True
+
+        isWrongColor = 
+            color /= fromMaybe Black (nextMoveColor_FromTaggedState lastState) -- should never use default
+
+        isNoAvailableDisk = 
+            isZeroUnusedDiskCount color $ coreState_FromTaggedState lastState
+
+        isNotOutflanking =
+            not $ elem emptySquare $ map (\(Move _ emptySquare' _) -> emptySquare') $ actual_NextMoves_FromTaggedState lastState
+    in
+        (if isGameOver        then [GameOver]        else []) ++
+        (if isWrongColor      then [WrongColor]      else []) ++
+        (if isNoAvailableDisk then [NoAvailableDisk] else []) ++
+        (if isNotOutflanking  then [NotOutflanking]  else []) 
+
+
+applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> Either [MoveValidationError] (NE.NonEmpty Tagged_State)
 applyMoveOnHistory move history = 
-    NE.fromList $ (NE.toList history) ++ [taggedState]
-        where taggedState = applyMoveOnState move $ NE.last history
+    let
+        errors = validateMoveOnHistory move history
+        taggedState = applyMoveOnState move $ NE.last history
+    in
+        if null errors then
+            Right $ NE.fromList $ (NE.toList history) ++ [taggedState]
+        else
+            Left errors
 
 
 undoHistoryOnce :: NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
@@ -313,9 +356,11 @@ undoHistoryOnceForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmp
 undoHistoryOnceForColor color history = 
     let
         lastState = NE.last history
+        toggledColor = toggleColor color
     in
         if NE.length history == 1 then 
             Nothing
+
         else if NE.length history == 2 then
             let 
                 headState = NE.head history
@@ -332,27 +377,23 @@ undoHistoryOnceForColor color history =
 
                     Tagged_EndState _ -> 
                         Nothing -- should never get here
+
         else if isForfeitTurn lastState then
             Just $ NE.fromList $ NE.init history
+
         else
             case lastState of
                 Tagged_StartState _ -> 
                     Nothing -- should never get here
 
                 Tagged_MidState _ ->
-                    let
-                        toggledColor = toggleColor color
-                        
-                        f :: Tagged_State -> Bool
-                        f = \ x -> colorResultingInTaggedState x == toggledColor
-                    in
-                        history
-                            & NE.reverse
-                            & NE.dropWhile f
-                            & drop 1
-                            & NE.fromList -- non empty by definition
-                            & NE.reverse
-                            & Just
+                    history
+                        & NE.reverse
+                        & NE.dropWhile (\ x -> colorResultingInTaggedState x == toggledColor)
+                        & drop 1
+                        & NE.fromList -- non empty by definition
+                        & NE.reverse
+                        & Just
 
                 Tagged_EndState _ -> 
                     Nothing -- should never get here

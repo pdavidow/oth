@@ -6,11 +6,12 @@ module Sequencer
 import Safe ( atDef )
 import Data.Maybe ( fromMaybe, isJust )
 import Data.List ( find )
+import Data.Either ( fromLeft, fromRight, isRight )
 import qualified Data.List.NonEmpty as NE ( NonEmpty, last )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import State ( Tagged_State(..), applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
+import State ( Tagged_State(..), EndState, MoveValidationError(..), applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
 import Position ( Position, makeValidPosition )
@@ -41,25 +42,19 @@ moveSequence players history = do
  
 
 advance :: (PlayerBlack, PlayerWhite) -> Move -> NE.NonEmpty Tagged_State -> IO ()
-advance players move history = do    
-    let history' = applyMoveOnHistory move history
-    let taggedState = NE.last history'
-    
-    case taggedState of 
-        Tagged_StartState _ -> moveSequence players history' -- should never get here
+advance players move history = do  
+    let eiHistory' = applyMoveOnHistory move history
 
-        Tagged_MidState _   -> moveSequence players history'
-
-        Tagged_EndState x -> do
-            putStrLn $ gameStateDisplay Nothing taggedState
-            putStrLn ""
-            putStrLn $ gameSummaryDisplay x
-            putStrLn ""
-            putStrLn "########################################"
-            putStrLn "FYI, here are the flip-counts:\n"
-            putStrLn $ boardWithFlipCountDisplay $ board_FromTaggedState taggedState
-            putStrLn "########################################"
-            return ()
+    if isRight eiHistory' then do
+        let history' = fromRight history eiHistory' -- should never use default value
+        let taggedState = NE.last history'
+        
+        case taggedState of 
+            Tagged_StartState _ -> moveSequence players history' -- should never get here
+            Tagged_MidState _   -> moveSequence players history'
+            Tagged_EndState x   -> displayEndSummary x
+    else -- should never get here (in theory), due to constrained interface
+        reportMoveErrors $ fromLeft [] eiHistory' -- should never use default value
 
 
 nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
@@ -129,6 +124,34 @@ promptForMoveChoice color isUndoable numberedMovesWithPos =
             (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest, " ++ show choiceNumberFor_Undo ++ ":undo) " ++ nomenclature ++ "\nEnter choice"
         else 
             (colorAllCapsString color) ++ " Options: (" ++ show choiceNumberFor_DisplayChoicesOnBoard ++ ":show, " ++ show choiceNumberFor_Suggest ++ ":suggest) " ++ nomenclature ++ "\nEnter choice"
+
+
+displayEndSummary :: EndState -> IO ()
+displayEndSummary x = do
+    let taggedState = Tagged_EndState x
+
+    putStrLn $ gameStateDisplay Nothing taggedState
+    putStrLn ""
+    putStrLn $ gameSummaryDisplay x
+    putStrLn ""
+    putStrLn "########################################"
+    putStrLn "FYI, here are the flip-counts:\n"
+    putStrLn $ boardWithFlipCountDisplay $ board_FromTaggedState taggedState
+    putStrLn "########################################"
+    
+    return ()
+
+
+reportMoveErrors :: [MoveValidationError] -> IO ()
+reportMoveErrors errors = do
+    let uhohs = concatMap (\x -> "\n   " ++ show x) errors
+
+    putStrLn "\n================="
+    putStrLn "INVALID MOVE"
+    putStrLn uhohs
+    putStrLn "\n================="
+
+    return ()
 
 
 choiceNumberFor_DisplayChoicesOnBoard :: Int

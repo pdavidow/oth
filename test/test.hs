@@ -8,13 +8,14 @@ import Test.Tasty.HUnit
 import Data.Function ( (&) )
 import Data.List ( foldl' )
 import Data.Maybe ( fromJust )
+import Data.Either ( fromLeft, fromRight )
 import qualified Data.List.NonEmpty as NE ( filter, fromList, last )
  
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePos, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
-import Disk ( Color(..), flipCount )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn )
-import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne )
+import Disk ( Color(..), flipCount, toggleColor )
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom )
+import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne, makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
@@ -421,17 +422,17 @@ unitTests = testGroup "Unit tests" $
             taggedState1 = NE.last history1
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
-            history2 = applyMoveOnHistory move1 history1 
+            history2 = fromRight history1 $ applyMoveOnHistory move1 history1 
 
             taggedState2 = NE.last history2
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
-            history3 = applyMoveOnHistory move2 history2     
+            history3 = fromRight history1 $ applyMoveOnHistory move2 history2     
 
             taggedState3 = NE.last history3
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
-            history4 = applyMoveOnHistory move3 history3 
+            history4 = fromRight history1 $ applyMoveOnHistory move3 history3 
 
             taggedState4 = NE.last history4         
 
@@ -490,41 +491,50 @@ unitTests = testGroup "Unit tests" $
                       history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      history2 = applyMoveOnHistory (head moves1) history1 
+                      history2 = fromRight history1 $ applyMoveOnHistory (head moves1) history1 
                       (Tagged_EndState (EndState _ endReason _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
-                      [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBot" $ 
+                      [ testCase "first move results in: Tagged_EndState, NoUnusedDisksForBoth" $ 
                         endReason @?= NoUnusedDisksForBoth
                       ]
 
-              , testGroup "Black on first move is confronted with full White board -- except for last column which is blank (contrived)" $
+              , testGroup "Black on first move is confronted with full White board -- except for (1,1) which is Black, and (1,8) which is blank (contrived)" $
                   let
                       (StartState c n (CoreState b w board)) = makeStartState
 
-                      board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                      board' = boardFromConfig $ 
+                          [(Black, (makeValidPosition 1 1))] ++ 
+                          [(White, (makeValidPosition 2 boardSize))] ++
+                          [(White, (makeValidPosition 3 boardSize))] ++
+                          [(White, (makeValidPosition 4 boardSize))] ++
+                          [(White, (makeValidPosition 5 boardSize))] ++
+                          [(White, (makeValidPosition 6 boardSize))] ++
+                          [(White, (makeValidPosition 7 boardSize))] ++
+                          [(White, (makeValidPosition boardSize boardSize))] ++
+                          tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
+                      taggedState1 = Tagged_StartState $ StartState Black (nextMovesFrom c board') $ CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board'
                       history1 = NE.fromList $ [taggedState1]
-                      move = Move Black (head $ emptySquares board') $ Outflanks []
+                      move = head $ actual_NextMoves_FromTaggedState taggedState1
 
-                      history2 = applyMoveOnHistory move history1 
+                      history2 = fromRight history1 $ applyMoveOnHistory move history1 
                       (Tagged_EndState (EndState _ endStatus _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                   in
                       [ testCase "first move results in: Tagged_EndState, NoValidMoves" $ 
-                        endStatus @?= NoValidMoves
+                        endStatus @?= NoValidMoves                        
                       ]
 
               , testGroup "Black on first move is confronted with full White board -- except for (1,1) which is Black, and last column which is blank (contrived)" $
                     let
                         (StartState c n (CoreState b w board)) = makeStartState
 
-                        board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                        board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
                         taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
                         history1 = NE.fromList $ [taggedState1]
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                        history2 = applyMoveOnHistory (head moves1) history1 
+                        history2 = fromRight history1 $ applyMoveOnHistory (head moves1) history1 
                         taggedState2@(Tagged_MidState (MidState _ midStatus _ _)) = NE.last history2 -- if pattern match fails (due to bug), exception will be raised from pattern-matching, which is part of the test
                     in
                         [ testCase "First move results in: Tagged_MidState, ForfeitTurn_Rule2" $ 
@@ -546,11 +556,11 @@ unitTests = testGroup "Unit tests" $
                       history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
-                      history2 = applyMoveOnHistory (head moves1) history1 
+                      history2 = fromRight history1 $ applyMoveOnHistory (head moves1) history1 
                       taggedState2@(Tagged_MidState (MidState _ midStatus2 _ _)) = NE.last history2
                       moves2 = actual_NextMoves_FromTaggedState taggedState2
           
-                      history3 = applyMoveOnHistory (head moves2) history2
+                      history3 = fromRight history1 $ applyMoveOnHistory (head moves2) history2
                       taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = NE.last history3
 
                       (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
@@ -566,6 +576,78 @@ unitTests = testGroup "Unit tests" $
                         (midStatus2, midStatus3) @?= (TransferDisk_Rule9, Normal)   
                       ]
 
+              , testGroup "Validate Move" $
+                  [ testGroup "NotOutflanking" $
+                      let
+                          (StartState c n (CoreState b w board)) = makeStartState
+
+                          board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+
+                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState b w board'
+                          history1 = NE.fromList $ [taggedState1]
+                          -- Black on first move is confronted with full White board -- except for last column which is blank (contrived)
+                          move = Move Black (head $ emptySquares board') $ Outflanks []
+
+                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                      in
+                          [ testCase "first move results in: NotOutflanking" $ 
+                              errors @?= [NotOutflanking]
+                          ]
+
+                  , testGroup "NoAvailableDisk" $
+                      let
+                          startState@(StartState c n (CoreState b w board)) = makeStartState
+                          (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne (Tagged_BlackUnusedDiskCount b) !! nb
+ 
+                          taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w board
+                          history1 = NE.fromList $ [taggedState1]
+                          -- Black on first move is confronted with no available disks (contrived)
+                          move = head $ actual_NextMoves_FromTaggedState taggedState1
+
+                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                      in
+                          [ testCase "first move results in: NoAvailableDisk" $ 
+                              errors @?= [NoAvailableDisk]
+                          ]      
+                        
+                  , testGroup "WrongColor" $
+                      let
+                          history1 = makeHistory
+
+                          taggedState1 = NE.last history1
+                          (Move color emptySquare outflanks) = head $ actual_NextMoves_FromTaggedState taggedState1 
+                          move = Move (toggleColor color) emptySquare outflanks
+
+                          errors = fromLeft [] $ applyMoveOnHistory move history1  
+                      in
+                          [ testCase "first move results in: WrongColor" $ 
+                              errors @?= [WrongColor]
+                          ]    
+                          
+                  , testGroup "WrongColor, NoAvailableDisk, NotOutflanking" $
+                      let
+                          startState@(StartState c n (CoreState b w board)) = makeStartState
+                          board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+
+                          (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
+                          (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          
+                          (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne tb !! nb
+                          (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
+   
+                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState b' w' board'
+                          history1 = NE.fromList $ [taggedState1]
+
+                          move = Move White (head $ emptySquares board') $ Outflanks []
+
+                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                        in
+                          [ testCase "first move results in: WrongColor, NoAvailableDisk, NotOutflanking" $ 
+                              errors @?= [WrongColor, NoAvailableDisk, NotOutflanking]
+                          ]                           
+                  ]
+
               , testGroup "Undo" $
                   [ testGroup "Actual game (not contrived)" $
                       let
@@ -573,103 +655,103 @@ unitTests = testGroup "Unit tests" $
 
                           taggedState1 = NE.last history1
                           move1 = head $ actual_NextMoves_FromTaggedState taggedState1 -- black C4
-                          history2 = applyMoveOnHistory move1 history1 
+                          history2 = fromRight history1 $ applyMoveOnHistory move1 history1 
 
                           taggedState2 = NE.last history2
                           move2 = head $ actual_NextMoves_FromTaggedState taggedState2 -- white C3
-                          history3 = applyMoveOnHistory move2 history2     
+                          history3 = fromRight history1 $ applyMoveOnHistory move2 history2     
                           
                           taggedState3 = NE.last history3
                           move3 = head $ actual_NextMoves_FromTaggedState taggedState3 -- black C2
-                          history4 = applyMoveOnHistory move3 history3    
+                          history4 = fromRight history1 $ applyMoveOnHistory move3 history3    
                           
                           taggedState4 = NE.last history4
                           move4 = head $ actual_NextMoves_FromTaggedState taggedState4 -- white B2
-                          history5 = applyMoveOnHistory move4 history4    
+                          history5 = fromRight history1 $ applyMoveOnHistory move4 history4    
                           
                           taggedState5 = NE.last history5
                           move5 = head $ actual_NextMoves_FromTaggedState taggedState5 -- black A2
-                          history6 = applyMoveOnHistory move5 history5 
+                          history6 = fromRight history1 $ applyMoveOnHistory move5 history5 
 
                           taggedState6 = NE.last history6
                           move6 = head $ actual_NextMoves_FromTaggedState taggedState6 -- white A1
-                          history7 = applyMoveOnHistory move6 history6    
+                          history7 = fromRight history1 $ applyMoveOnHistory move6 history6    
                           
                           taggedState7 = NE.last history7
                           move7 = head $ actual_NextMoves_FromTaggedState taggedState7 -- black D3
-                          history8 = applyMoveOnHistory move7 history7    
+                          history8 = fromRight history1 $ applyMoveOnHistory move7 history7    
                           
                           taggedState8 = NE.last history8
                           move8 = head $ actual_NextMoves_FromTaggedState taggedState8 -- white A3
-                          history9 = applyMoveOnHistory move8 history8  
+                          history9 = fromRight history1 $ applyMoveOnHistory move8 history8  
                           
                           taggedState9 = NE.last history9
                           move9 = head $ actual_NextMoves_FromTaggedState taggedState9 -- black B3
-                          history10 = applyMoveOnHistory move9 history9 
+                          history10 = fromRight history1 $ applyMoveOnHistory move9 history9 
 
                           taggedState10 = NE.last history10
                           move10 = head $ actual_NextMoves_FromTaggedState taggedState10 -- white D2
-                          history11 = applyMoveOnHistory move10 history10     
+                          history11 = fromRight history1 $ applyMoveOnHistory move10 history10     
                           
                           taggedState11 = NE.last history11
                           move11 = head $ actual_NextMoves_FromTaggedState taggedState11 -- black B1
-                          history12 = applyMoveOnHistory move11 history11    
+                          history12 = fromRight history1 $ applyMoveOnHistory move11 history11    
                           
                           taggedState12 = NE.last history12
                           move12 = head $ actual_NextMoves_FromTaggedState taggedState12 -- white C1
-                          history13 = applyMoveOnHistory move12 history12  
+                          history13 = fromRight history1 $ applyMoveOnHistory move12 history12  
                           
                           taggedState13 = NE.last history13
                           move13 = head $ actual_NextMoves_FromTaggedState taggedState13 -- black D1
-                          history14 = applyMoveOnHistory move13 history13
+                          history14 = fromRight history1 $ applyMoveOnHistory move13 history13
 
                           taggedState14 = NE.last history14
                           move14 = head $ actual_NextMoves_FromTaggedState taggedState14 -- white E1
-                          history15 = applyMoveOnHistory move14 history14     
+                          history15 = fromRight history1 $ applyMoveOnHistory move14 history14     
                           
                           taggedState15 = NE.last history15
                           move15 = head $ actual_NextMoves_FromTaggedState taggedState15 -- black E6
-                          history16 = applyMoveOnHistory move15 history15    
+                          history16 = fromRight history1 $ applyMoveOnHistory move15 history15    
                           
                           taggedState16 = NE.last history16
                           move16 = head $ actual_NextMoves_FromTaggedState taggedState16 -- white E2
-                          history17 = applyMoveOnHistory move16 history16  
+                          history17 = fromRight history1 $ applyMoveOnHistory move16 history16  
                           
                           taggedState17 = NE.last history17
                           move17 = head $ actual_NextMoves_FromTaggedState taggedState17 -- black F1
-                          history18 = applyMoveOnHistory move17 history17
+                          history18 = fromRight history1 $ applyMoveOnHistory move17 history17
 
                           taggedState18 = NE.last history18
                           move18 = head $ actual_NextMoves_FromTaggedState taggedState18 -- white F2
-                          history19 = applyMoveOnHistory move18 history18     
+                          history19 = fromRight history1 $ applyMoveOnHistory move18 history18     
                           
                           taggedState19 = NE.last history19
                           move19 = head $ actual_NextMoves_FromTaggedState taggedState19 -- black F3
-                          history20 = applyMoveOnHistory move19 history19    
+                          history20 = fromRight history1 $ applyMoveOnHistory move19 history19    
                           
                           taggedState20 = NE.last history20
                           move20 = head $ actual_NextMoves_FromTaggedState taggedState20 -- white G1
-                          history21 = applyMoveOnHistory move20 history20
+                          history21 = fromRight history1 $ applyMoveOnHistory move20 history20
                           
                           taggedState21 = NE.last history21                              -- forfeit
                           move21 = head $ actual_NextMoves_FromTaggedState taggedState21 -- white E3 
-                          history22 = applyMoveOnHistory move21 history21
+                          history22 = fromRight history1 $ applyMoveOnHistory move21 history21
 
                           taggedState22 = NE.last history22                              -- forfeit
                           move22 = head $ actual_NextMoves_FromTaggedState taggedState22 -- white F4
-                          history23 = applyMoveOnHistory move22 history22     
+                          history23 = fromRight history1 $ applyMoveOnHistory move22 history22     
                           
                           taggedState23 = NE.last history23
                           move23 = head $ actual_NextMoves_FromTaggedState taggedState23 -- black G2
-                          history24 = applyMoveOnHistory move23 history23    
+                          history24 = fromRight history1 $ applyMoveOnHistory move23 history23    
                           
                           taggedState24 = NE.last history24
                           move24 = head $ actual_NextMoves_FromTaggedState taggedState24 -- white G3
-                          history25 = applyMoveOnHistory move24 history24  
+                          history25 = fromRight history1 $ applyMoveOnHistory move24 history24  
                           
                           taggedState25 = NE.last history25
                           move25 = head $ actual_NextMoves_FromTaggedState taggedState25 -- black H1
-                          history26 = applyMoveOnHistory move25 history25                           
+                          history26 = fromRight history1 $ applyMoveOnHistory move25 history25                           
                       in
                           [ testCase "undo history1" $ 
                               let
