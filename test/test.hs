@@ -577,7 +577,7 @@ unitTests = testGroup "Unit tests" $
                       ]
 
               , testGroup "Validate Move" $
-                  [ testGroup "NotOutflanking" $
+                  [ testGroup "NotOutflanking (contrived)" $
                       let
                           (StartState c n (CoreState b w board)) = makeStartState
 
@@ -585,7 +585,7 @@ unitTests = testGroup "Unit tests" $
 
                           taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState b w board'
                           history1 = NE.fromList $ [taggedState1]
-                          -- Black on first move is confronted with full White board -- except for last column which is blank (contrived)
+                          -- Black on first move is confronted with full White board -- except for last column which is blank
                           move = Move Black (head $ emptySquares board') $ Outflanks []
 
                           errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1 
@@ -594,7 +594,7 @@ unitTests = testGroup "Unit tests" $
                                 NE.toList errors @?= [NotOutflanking]
                           ]
 
-                  , testGroup "NoAvailableDisk" $
+                  , testGroup "NoAvailableDisk (contrived)" $
                       let
                           startState@(StartState c n (CoreState b w board)) = makeStartState
                           (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
@@ -602,7 +602,7 @@ unitTests = testGroup "Unit tests" $
  
                           taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w board
                           history1 = NE.fromList $ [taggedState1]
-                          -- Black on first move is confronted with no available disks (contrived)
+                          -- Black on first move is confronted with no available disks
                           move = head $ actual_NextMoves_FromTaggedState taggedState1
 
                           errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1 
@@ -611,7 +611,7 @@ unitTests = testGroup "Unit tests" $
                                 NE.toList errors @?= [NoAvailableDisk]
                           ]      
                         
-                  , testGroup "WrongColor" $
+                  , testGroup "WrongColor (contrived)" $
                       let
                           history1 = makeHistory
 
@@ -625,7 +625,7 @@ unitTests = testGroup "Unit tests" $
                                 NE.toList errors @?= [WrongColor]
                           ]    
                           
-                  , testGroup "WrongColor, NoAvailableDisk, NotOutflanking" $
+                  , testGroup "WrongColor, NoAvailableDisk, NotOutflanking (contrived)" $
                       let
                           startState@(StartState c n (CoreState b w board)) = makeStartState
                           board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
