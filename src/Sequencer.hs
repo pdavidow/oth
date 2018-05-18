@@ -7,7 +7,7 @@ import Safe ( atDef )
 import Data.Maybe ( fromMaybe, isJust )
 import Data.List ( find )
 import Data.Either ( fromLeft, fromRight, isRight )
-import qualified Data.List.NonEmpty as NE ( NonEmpty, last )
+import qualified Data.List.NonEmpty as NE ( NonEmpty, last, fromList, toList )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
@@ -54,7 +54,7 @@ advance players move history = do
             Tagged_MidState _   -> moveSequence players history'
             Tagged_EndState x   -> displayEndSummary x
     else -- should never get here (in theory), due to constrained interface
-        reportMoveErrors $ fromLeft [] eiHistory' -- should never use default value
+        reportMoveErrors $ fromLeft (NE.fromList [DefaultDummy]) eiHistory' -- should never use default value
 
 
 nextPlayer :: (PlayerBlack, PlayerWhite) -> Tagged_State -> Tagged_Player
@@ -142,9 +142,9 @@ displayEndSummary x = do
     return ()
 
 
-reportMoveErrors :: [MoveValidationError] -> IO ()
+reportMoveErrors :: NE.NonEmpty MoveValidationError -> IO ()
 reportMoveErrors errors = do
-    let uhohs = concatMap (\x -> "\n   " ++ show x) errors
+    let uhohs = concatMap (\x -> "\n   " ++ show x) $ NE.toList errors
 
     putStrLn "\n================="
     putStrLn "INVALID MOVE"

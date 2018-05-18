@@ -9,7 +9,7 @@ import Data.Function ( (&) )
 import Data.List ( foldl' )
 import Data.Maybe ( fromJust )
 import Data.Either ( fromLeft, fromRight )
-import qualified Data.List.NonEmpty as NE ( filter, fromList, last )
+import qualified Data.List.NonEmpty as NE ( filter, fromList, toList, last )
  
 import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePos, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
@@ -588,10 +588,10 @@ unitTests = testGroup "Unit tests" $
                           -- Black on first move is confronted with full White board -- except for last column which is blank (contrived)
                           move = Move Black (head $ emptySquares board') $ Outflanks []
 
-                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                          errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1 
                       in
                           [ testCase "first move results in: NotOutflanking" $ 
-                              errors @?= [NotOutflanking]
+                                NE.toList errors @?= [NotOutflanking]
                           ]
 
                   , testGroup "NoAvailableDisk" $
@@ -605,10 +605,10 @@ unitTests = testGroup "Unit tests" $
                           -- Black on first move is confronted with no available disks (contrived)
                           move = head $ actual_NextMoves_FromTaggedState taggedState1
 
-                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                          errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1 
                       in
                           [ testCase "first move results in: NoAvailableDisk" $ 
-                              errors @?= [NoAvailableDisk]
+                                NE.toList errors @?= [NoAvailableDisk]
                           ]      
                         
                   , testGroup "WrongColor" $
@@ -619,10 +619,10 @@ unitTests = testGroup "Unit tests" $
                           (Move color emptySquare outflanks) = head $ actual_NextMoves_FromTaggedState taggedState1 
                           move = Move (toggleColor color) emptySquare outflanks
 
-                          errors = fromLeft [] $ applyMoveOnHistory move history1  
+                          errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1  
                       in
                           [ testCase "first move results in: WrongColor" $ 
-                              errors @?= [WrongColor]
+                                NE.toList errors @?= [WrongColor]
                           ]    
                           
                   , testGroup "WrongColor, NoAvailableDisk, NotOutflanking" $
@@ -641,10 +641,10 @@ unitTests = testGroup "Unit tests" $
 
                           move = Move White (head $ emptySquares board') $ Outflanks []
 
-                          errors = fromLeft [] $ applyMoveOnHistory move history1 
+                          errors = fromLeft (NE.fromList [DefaultDummy]) $ applyMoveOnHistory move history1 
                         in
                           [ testCase "first move results in: WrongColor, NoAvailableDisk, NotOutflanking" $ 
-                              errors @?= [WrongColor, NoAvailableDisk, NotOutflanking]
+                                NE.toList errors @?= [WrongColor, NoAvailableDisk, NotOutflanking]
                           ]                           
                   ]
 

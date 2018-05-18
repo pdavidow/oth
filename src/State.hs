@@ -90,6 +90,7 @@ data MoveValidationError
     | WrongColor
     | NoAvailableDisk
     | NotOutflanking
+    | DefaultDummy
         deriving (Eq, Show)
 
 ------------------
@@ -334,7 +335,7 @@ validateMoveOnHistory move history =
         (if isNotOutflanking  then [NotOutflanking]  else []) 
 
 
-applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> Either [MoveValidationError] (NE.NonEmpty Tagged_State)
+applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> Either (NE.NonEmpty MoveValidationError) (NE.NonEmpty Tagged_State)
 applyMoveOnHistory move history = 
     let
         errors = validateMoveOnHistory move history
@@ -343,7 +344,7 @@ applyMoveOnHistory move history =
         if null errors then
             Right $ NE.fromList $ (NE.toList history) ++ [taggedState]
         else
-            Left errors
+            Left $ NE.fromList $ errors
 
 
 undoHistoryOnce :: NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
