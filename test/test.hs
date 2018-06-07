@@ -530,7 +530,7 @@ unitTests = testGroup "Unit tests" $
 
                         board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
-                        taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w board'
+                        taggedState1 = Tagged_StartState $ StartState c (nextMovesFrom c board') $ CoreState b w board'
                         history1 = NE.fromList $ [taggedState1]
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
 
