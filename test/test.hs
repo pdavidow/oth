@@ -11,7 +11,7 @@ import Data.Maybe ( fromJust )
 import Data.Either ( fromLeft, fromRight )
 import qualified Data.List.NonEmpty as NE ( filter, fromList, toList, last )
  
-import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePos, movePosChoices, diskFrom, filledSquares, boardAt) --, flipAt)
+import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), FilledRow(..), Tagged_Square(..), emptySquares, initialBoard, validMoves, boardFromConfig, toPos, applyBoardMove, filledPositions, movePos, movePosChoices, diskFrom, filledSquares, boardAt, boardSquaresColored) --, flipAt)
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount, toggleColor )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom )
@@ -19,7 +19,7 @@ import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne, m
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
-import BlackWhite ( blacksWhites )
+import BlackWhite ( BlackWhite(..), Blacks(..), Whites(..), blacksWhites, makeBlackWhite )
 import Lib ( mapTakeWhile )
 
 main = defaultMain tests
@@ -56,6 +56,12 @@ boardWithValidMovesDisplay showMoves board =
         (Just $ showMoveNumInEmptySquare showMoves)
         Nothing
         board
+
+
+filledPositions_BlackWhite :: Board -> BlackWhite [(Int, Int)]         
+filledPositions_BlackWhite board =
+    makeBlackWhite (f Black) (f White)
+        where f = \ color -> map (posCoords . toPos . Tagged_FilledSquare) $ boardSquaresColored color board
 
 
 unitTests = testGroup "Unit tests" $
@@ -362,55 +368,24 @@ unitTests = testGroup "Unit tests" $
         , testGroup "apply: validMoves White board_Figure2" $
             [ testGroup "move0" $
                 let
-                  boardBefore = board_Figure2
-                  moves = validMoves White boardBefore
+                  board = board_Figure2
+                  moves = validMoves White board
                   move0 = moves !! 0
-                  boardAfter = applyBoardMove move0 boardBefore
+                  (BlackWhite (Blacks bp) (Whites wp)) = filledPositions_BlackWhite $ applyBoardMove move0 board 
                 in
-                    [ testCase "white positions" $ 
-                        filledPositions White boardAfter @?= 
-                            [ (makeValidPosition 3 3)
-                            , (makeValidPosition 3 7)
-                            , (makeValidPosition 4 2)
-                            , (makeValidPosition 5 3)
-                            , (makeValidPosition 6 4)
-                            , (makeValidPosition 7 5)
-                            ]
-
-                    , testCase "black positions" $
-                        filledPositions Black boardAfter @?= 
-                            [ (makeValidPosition 4 3)
-                            , (makeValidPosition 4 6)
-                            , (makeValidPosition 5 5)
-                            , (makeValidPosition 6 3)
-                            , (makeValidPosition 7 4)
-                            ]                                                                                   
+                    [ testCase "filledPositions black" $ bp @?= [(4,3), (4,6), (5,5), (6,3), (7,4)]
+                    , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,2), (5,3), (6,4), (7,5)]                                                                             
                     ]  
 
             , testGroup "move1" $
                 let
-                    boardBefore = board_Figure2
-                    moves = validMoves White boardBefore
+                    board = board_Figure2
+                    moves = validMoves White board
                     move1 = moves !! 1
-                    boardAfter = applyBoardMove move1 boardBefore
+                    (BlackWhite (Blacks bp) (Whites wp)) = filledPositions_BlackWhite $ applyBoardMove move1 board
                 in
-                    [ testCase "white positions" $ 
-                        filledPositions White boardAfter @?= 
-                            [ (makeValidPosition 3 3)
-                            , (makeValidPosition 3 7)
-                            , (makeValidPosition 4 3)
-                            , (makeValidPosition 4 6)
-                            , (makeValidPosition 5 3)
-                            , (makeValidPosition 5 5)
-                            , (makeValidPosition 6 3)
-                            , (makeValidPosition 6 4)
-                            , (makeValidPosition 7 3)
-                            , (makeValidPosition 7 4)
-                            , (makeValidPosition 7 5)
-                            ]
-
-                    , testCase "black positions" $
-                      filledPositions Black boardAfter @?= []                                                                                   
+                    [ testCase "filledPositions black" $ bp @?= []
+                    , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,3), (4,6), (5,3), (5,5), (6,3), (6,4), (7,3), (7,4), (7,5)]                                                                             
                     ]    
               ]
           ]
@@ -420,21 +395,25 @@ unitTests = testGroup "Unit tests" $
             history1 = makeHistory
 
             taggedState1 = NE.last history1
+            (BlackWhite (Blacks bp1) (Whites wp1)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState1
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
             history2 = fromRight history1 $ applyMoveOnHistory move1 history1 
 
             taggedState2 = NE.last history2
+            (BlackWhite (Blacks bp2) (Whites wp2)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState2
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
             history3 = fromRight history1 $ applyMoveOnHistory move2 history2     
 
             taggedState3 = NE.last history3
+            (BlackWhite (Blacks bp3) (Whites wp3)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState3
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
             history4 = fromRight history1 $ applyMoveOnHistory move3 history3 
 
-            taggedState4 = NE.last history4         
+            taggedState4 = NE.last history4     
+            (BlackWhite (Blacks bp4) (Whites wp4)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState4    
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
@@ -454,7 +433,19 @@ unitTests = testGroup "Unit tests" $
 
             (c2, c3, c4) = (priorMoveColor priorMove2, priorMoveColor priorMove3, priorMoveColor priorMove4)
           in
-              [ testCase "initial: gameStateDisplay Nothing" $ 
+              [ testCase "filledPositions b1" $ bp1 @?= [(4,5), (5,4)]
+              , testCase "filledPositions w1" $ wp1 @?= [(4,4), (5,5)]
+
+              , testCase "filledPositions b2" $ bp2 @?= [(4,3), (4,4), (4,5), (5,4)]
+              , testCase "filledPositions w2" $ wp2 @?= [(5,5)]
+ 
+              , testCase "filledPositions b3" $ bp3 @?= [(4,3), (4,5), (5,4)]
+              , testCase "filledPositions w3" $ wp3 @?= [(3,3), (4,4), (5,5)]
+
+              , testCase "filledPositions b4" $ bp4 @?= [(2,3), (3,3), (4,3), (4,5), (5,4)]
+              , testCase "filledPositions w4" $ wp4 @?= [(4,4), (5,5)]
+
+              , testCase "initial: gameStateDisplay Nothing" $ 
                 display1 @?= "    A    B    C    D    E    F    G    H    \n1   .    .    .    .    .    .    .    .  \n\n2   .    .    .    .    .    .    .    .  \n\n3   .    .    .    .    .    .    .    .  \n\n4   .    .    .    o    x    .    .    .  \n\n5   .    .    .    x    o    .    .    .  \n\n6   .    .    .    .    .    .    .    .  \n\n7   .    .    .    .    .    .    .    .  \n\n8   .    .    .    .    .    .    .    .  \n\nAwaiting your first move...\n\nAvailable Disks\nBlack 32: x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x\nWhite 32: o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o o"
                 
               , testCase "initial: gameStateDisplay (Just numberedMovesWithPos)" $ 
