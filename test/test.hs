@@ -19,7 +19,7 @@ import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne, m
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
-import BlackWhite ( BlackWhite(..), Blacks(..), Whites(..), blacksWhites, makeBlackWhite )
+import BlackWhite ( BlackWhite(..), blacksWhites, makeBlackWhite )
 import Lib ( mapTakeWhile )
 
 main = defaultMain tests
@@ -371,7 +371,7 @@ unitTests = testGroup "Unit tests" $
                   board = board_Figure2
                   moves = validMoves White board
                   move0 = moves !! 0
-                  (BlackWhite (Blacks bp) (Whites wp)) = filledPositions_BlackWhite $ applyBoardMove move0 board 
+                  (bp, wp) = blacksWhites $ filledPositions_BlackWhite $ applyBoardMove move0 board 
                 in
                     [ testCase "filledPositions black" $ bp @?= [(4,3), (4,6), (5,5), (6,3), (7,4)]
                     , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,2), (5,3), (6,4), (7,5)]                                                                             
@@ -382,7 +382,7 @@ unitTests = testGroup "Unit tests" $
                     board = board_Figure2
                     moves = validMoves White board
                     move1 = moves !! 1
-                    (BlackWhite (Blacks bp) (Whites wp)) = filledPositions_BlackWhite $ applyBoardMove move1 board
+                    (bp, wp) = blacksWhites $ filledPositions_BlackWhite $ applyBoardMove move1 board
                 in
                     [ testCase "filledPositions black" $ bp @?= []
                     , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,3), (4,6), (5,3), (5,5), (6,3), (6,4), (7,3), (7,4), (7,5)]                                                                             
@@ -395,25 +395,25 @@ unitTests = testGroup "Unit tests" $
             history1 = makeHistory
 
             taggedState1 = NE.last history1
-            (BlackWhite (Blacks bp1) (Whites wp1)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState1
+            (bp1, wp1) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState1
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
             history2 = fromRight history1 $ applyMoveOnHistory move1 history1 
 
             taggedState2 = NE.last history2
-            (BlackWhite (Blacks bp2) (Whites wp2)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState2
+            (bp2, wp2) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState2
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
             history3 = fromRight history1 $ applyMoveOnHistory move2 history2     
 
             taggedState3 = NE.last history3
-            (BlackWhite (Blacks bp3) (Whites wp3)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState3
+            (bp3, wp3) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState3
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
             history4 = fromRight history1 $ applyMoveOnHistory move3 history3 
 
             taggedState4 = NE.last history4     
-            (BlackWhite (Blacks bp4) (Whites wp4)) = filledPositions_BlackWhite $ board_FromTaggedState taggedState4    
+            (bp4, wp4) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState4    
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
