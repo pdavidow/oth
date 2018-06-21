@@ -34,22 +34,21 @@ module State
     )   
     where
 
-import Data.Maybe ( fromMaybe, mapMaybe )
+import Data.Maybe ( fromMaybe, mapMaybe ) 
 import Data.Function ( (&) )
 import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
 import qualified Data.List.NonEmpty as NE ( NonEmpty, dropWhile, fromList, head, init, last, length, reverse, toList )
---import Data.Validation ( Validation , #)
 
 import Disk ( Color(..), toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
-import UnusedDiskCount ( BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom, applyToUnusedDiskCounts )
+import UnusedDiskCount ( UnusedDiskCounts, BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeUnusedDiskCounts, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isValidCoords, makeValidPosition, posCoords )
-import BlackWhite ( BlackWhite, makeBlackWhite, blacksWhites )
+import BlackWhite ( BlackWhite(..), BlackWhiteH(..) )
 
 
-data CoreState = CoreState BlackUnusedDiskCount WhiteUnusedDiskCount Board deriving (Eq, Show)
+data CoreState = CoreState UnusedDiskCounts Board deriving (Eq, Show)
 
 data StartState = StartState Color NextMoves CoreState deriving (Eq, Show)
 
@@ -125,7 +124,7 @@ makeStartState =
         board = initialBoard
         nextMoves = nextMovesFrom startColor board
     in
-        StartState startColor nextMoves $ CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board
+        StartState startColor nextMoves $ CoreState makeUnusedDiskCounts board
 
 
 priorMoveColor :: PriorMove -> Color 
@@ -139,7 +138,7 @@ nextMovesFrom color board =
 
 
 isZeroUnusedDiskCount :: Color -> CoreState -> Bool
-isZeroUnusedDiskCount color (CoreState b w _) =
+isZeroUnusedDiskCount color (CoreState (BlackWhiteH b w) _) =
     case color of
         Black -> isZeroCount $ Tagged_BlackUnusedDiskCount b
         White -> isZeroCount $ Tagged_WhiteUnusedDiskCount w
@@ -151,13 +150,13 @@ applyMoveOnState move taggedState =
         makeMidState :: MidState
         makeMidState =
             let
-                (CoreState b w board) = coreState_FromTaggedState taggedState
+                (CoreState unusedDiskCounts board) = coreState_FromTaggedState taggedState
                 color = moveColor move
-                ( b', w' ) = applyToUnusedDiskCounts (decreaseByOneFor color) ( b, w )
+                unusedDiskCounts' = decreaseByOneFor color unusedDiskCounts
                 board' = applyBoardMove move board
                 nexts = nextMovesFrom (toggleColor color) board'
             in
-                MidState (PriorMove move) Normal nexts (CoreState b' w' board')
+                MidState (PriorMove move) Normal nexts (CoreState unusedDiskCounts' board')
     in
         case taggedState of
             Tagged_StartState _ -> processMidState makeMidState
@@ -166,7 +165,7 @@ applyMoveOnState move taggedState =
 
 
 processMidState :: MidState -> Tagged_State
-processMidState midState@(MidState priorMove _ nexts@(NextMoves moves) coreState@(CoreState b w board)) =
+processMidState midState@(MidState priorMove _ nexts@(NextMoves moves) coreState@(CoreState unusedDiskCounts board)) =
     let
         priorColor = priorMoveColor priorMove
         nextColor = toggleColor priorColor
@@ -190,8 +189,8 @@ processMidState midState@(MidState priorMove _ nexts@(NextMoves moves) coreState
 
         transferDisk :: Tagged_State
         transferDisk = 
-            Tagged_MidState $ MidState priorMove TransferDisk_Rule9 nexts (CoreState b' w' board)
-                where ( b', w' ) = applyToUnusedDiskCounts (transferDiskTo nextColor) ( b, w )
+            Tagged_MidState $ MidState priorMove TransferDisk_Rule9 nexts (CoreState unusedDiskCounts' board)
+                where unusedDiskCounts' = transferDiskTo nextColor unusedDiskCounts
 
         passThru :: Tagged_State
         passThru = 
@@ -227,20 +226,20 @@ winner (GameSummary _ b w) =
 
 
 gameSummary :: EndState -> GameSummary
-gameSummary (EndState _ reason (CoreState _ _ board)) =
+gameSummary (EndState _ reason (CoreState _  board)) =
     GameSummary reason (makeBlackSquareCount b) (makeWhiteSquareCount w)
-        where ( b, w ) = blacksWhites $ squaresColoredCounts_BlackWhite board
+        where ( BlackWhite b w ) = squaresColoredCounts_BlackWhite board
 
 
 board_FromTaggedState :: Tagged_State -> Board
 board_FromTaggedState taggedState =
-    x where (CoreState _ _ x) = coreState_FromTaggedState taggedState
+    x where (CoreState _ x) = coreState_FromTaggedState taggedState
 
 
-unusedDiskCounts_FromTaggedState :: Tagged_State -> (BlackUnusedDiskCount, WhiteUnusedDiskCount)
+unusedDiskCounts_FromTaggedState :: Tagged_State -> UnusedDiskCounts
 unusedDiskCounts_FromTaggedState taggedState =
-    (b, w) 
-        where (CoreState b w _) = coreState_FromTaggedState taggedState
+    x 
+        where (CoreState x _) = coreState_FromTaggedState taggedState
 
 
 coreState_FromTaggedState :: Tagged_State -> CoreState
@@ -299,8 +298,8 @@ actual_NextMoves_FromTaggedState taggedState =
     
 actual_UnusedDiskCounts_FromTaggedState_BlackWhite :: Tagged_State -> BlackWhite Int
 actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
-    makeBlackWhite (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b) (UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
-        where (b, w) = unusedDiskCounts_FromTaggedState taggedState
+    BlackWhite (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b) (UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
+        where (BlackWhiteH b w) = unusedDiskCounts_FromTaggedState taggedState
 
 
 makeHistory :: NE.NonEmpty Tagged_State
@@ -431,7 +430,7 @@ isForfeitTurn taggedState =
 heuristic_pieceDifference :: Color -> Board -> Double 
 heuristic_pieceDifference myColor board = 
     let
-        ( b, w ) = blacksWhites $ squaresColoredCounts_BlackWhite board
+        (BlackWhite b w) = squaresColoredCounts_BlackWhite board
 
         ( myCount, opCount ) = 
             if myColor == Black then
@@ -508,7 +507,7 @@ heuristic_diskSquares myColor board =
 heuristic_cornerOccupancy :: Color -> Board -> Double 
 heuristic_cornerOccupancy myColor board = 
     let       
-        ( b, w ) = blacksWhites $ cornerCounts_BlackWhite board
+        (BlackWhite b w) = cornerCounts_BlackWhite board
 
         ( myCornerCount, oppCornerCount ) =
             if myColor == Black then ( b, w )
@@ -566,7 +565,7 @@ heuristic_score taggedState =
                                 (74.396 * heuristic_frontierDisks nextMoveColor board) + 
                                     (10 * heuristic_diskSquares nextMoveColor board)                        
 
-        Tagged_EndState (EndState (PriorMove (Move color _ _)) _ (CoreState _ _ board)) -> 
+        Tagged_EndState (EndState (PriorMove (Move color _ _)) _ (CoreState _ board)) -> 
             heuristic_pieceDifference (toggleColor color) board
 
 ---------------------------------------------------------------------------------------------

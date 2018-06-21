@@ -14,8 +14,7 @@ import Data.Function ( (&) )
 
 import BoardSize ( boardSize )
 
-
-data Position = Position Int Int deriving (Eq, Show) -- one-based
+data Position = Position {x :: Int, y :: Int} deriving (Eq, Show) -- one-based
 
 newtype PosRow = PosRow [Position] deriving (Eq, Show)
 

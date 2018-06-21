@@ -2,14 +2,12 @@ module UnusedDiskCount
     ( BlackUnusedDiskCount -- hiding constructor
     , WhiteUnusedDiskCount -- hiding constructor
     , Tagged_UnusedDiskCount(..)
-    , makeBlackUnusedDiskCount
-    , makeWhiteUnusedDiskCount 
-    , decreaseByOne
+    , UnusedDiskCounts
+    , makeUnusedDiskCounts
     , isZeroCount
     , transferDiskTo
     , decreaseByOneFor
     , countFrom
-    , applyToUnusedDiskCounts
     )
     where
 
@@ -17,14 +15,14 @@ import Data.Function ( (&) )
 import Disk ( Color(..) )
 
 import BoardSize ( boardSize )
-import BlackWhite ( BlackWhite(..), makeBlackWhite, blacksWhites )
+import BlackWhite ( BlackWhiteH(..) ) 
 
 
-newtype UnusedDiskCount = UnusedDiskCount Int deriving (Eq, Show)
+newtype BlackUnusedDiskCount = BlackUnusedDiskCount Int deriving (Eq, Show)
 
-newtype BlackUnusedDiskCount = BlackUnusedDiskCount UnusedDiskCount deriving (Eq, Show)
+newtype WhiteUnusedDiskCount = WhiteUnusedDiskCount Int deriving (Eq, Show)
 
-newtype WhiteUnusedDiskCount = WhiteUnusedDiskCount UnusedDiskCount deriving (Eq, Show)
+type UnusedDiskCounts = BlackWhiteH BlackUnusedDiskCount WhiteUnusedDiskCount 
 
 data Tagged_UnusedDiskCount
     = Tagged_BlackUnusedDiskCount BlackUnusedDiskCount
@@ -32,92 +30,50 @@ data Tagged_UnusedDiskCount
         deriving (Eq, Show)
 
 
-makeBlackUnusedDiskCount :: BlackUnusedDiskCount 
-makeBlackUnusedDiskCount =
-    BlackUnusedDiskCount initUnusedDiskCount
+makeUnusedDiskCounts :: UnusedDiskCounts
+makeUnusedDiskCounts =
+    BlackWhiteH 
+        (BlackUnusedDiskCount initUnusedDiskCount) 
+        (WhiteUnusedDiskCount initUnusedDiskCount)
 
 
-makeWhiteUnusedDiskCount :: WhiteUnusedDiskCount 
-makeWhiteUnusedDiskCount =
-    WhiteUnusedDiskCount initUnusedDiskCount
-
-
-initUnusedDiskCount :: UnusedDiskCount
+initUnusedDiskCount :: Int
 initUnusedDiskCount =
-    UnusedDiskCount $ div (boardSize * boardSize) 2 -- apparently
+    div (boardSize * boardSize) 2 -- apparently
 
 
 isZeroCount :: Tagged_UnusedDiskCount -> Bool
 isZeroCount tagged =
     let
-        f :: UnusedDiskCount -> Bool
-        f = \ (UnusedDiskCount n) -> n == 0
+        f :: Int -> Bool
+        f = \ n -> n == 0
     in
         case tagged of
             Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount x) -> f x
             Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount x) -> f x
+
+     
+transferDiskTo :: Color -> UnusedDiskCounts -> UnusedDiskCounts
+transferDiskTo color (BlackWhiteH (BlackUnusedDiskCount b) (WhiteUnusedDiskCount w)) =
+    case color of
+        Black -> BlackWhiteH (BlackUnusedDiskCount $ b + 1) (WhiteUnusedDiskCount $ subtractOneForPositive w)
+        White -> BlackWhiteH (BlackUnusedDiskCount $ subtractOneForPositive b) (WhiteUnusedDiskCount $ w + 1)
             
 
-applyToCount :: (UnusedDiskCount -> UnusedDiskCount) -> Tagged_UnusedDiskCount -> Tagged_UnusedDiskCount
-applyToCount f tagged =
-    case tagged of
-        Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount x) -> Tagged_BlackUnusedDiskCount $ BlackUnusedDiskCount $ f x
-        Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount x) -> Tagged_WhiteUnusedDiskCount $ WhiteUnusedDiskCount $ f x
-
-
-applyToUnusedDiskCounts 
-    :: (BlackWhite Tagged_UnusedDiskCount -> BlackWhite Tagged_UnusedDiskCount) 
-    -> ( BlackUnusedDiskCount, WhiteUnusedDiskCount )
-    -> ( BlackUnusedDiskCount, WhiteUnusedDiskCount )
-applyToUnusedDiskCounts f ( b, w ) =
-    let
-        ( (Tagged_BlackUnusedDiskCount b'), (Tagged_WhiteUnusedDiskCount w') ) = makeBlackWhite (Tagged_BlackUnusedDiskCount b) (Tagged_WhiteUnusedDiskCount w)
-            & f
-            & blacksWhites
-    in
-        ( b',  w' )
-
-
-increaseByOne :: Tagged_UnusedDiskCount -> Tagged_UnusedDiskCount
-increaseByOne tagged =
-    tagged
-        & applyToCount (\ (UnusedDiskCount n) -> UnusedDiskCount $ n + 1)
-
-
-decreaseByOne :: Tagged_UnusedDiskCount -> Tagged_UnusedDiskCount
-decreaseByOne tagged =
-    tagged
-        & applyToCount (\ d@(UnusedDiskCount n) -> if n == 0 then d else UnusedDiskCount $ n - 1)
-
+decreaseByOneFor :: Color -> UnusedDiskCounts -> UnusedDiskCounts
+decreaseByOneFor color (BlackWhiteH bc@(BlackUnusedDiskCount b) wc@(WhiteUnusedDiskCount w)) =
+    case color of
+        Black -> BlackWhiteH (BlackUnusedDiskCount $ subtractOneForPositive b) wc
+        White -> BlackWhiteH bc (WhiteUnusedDiskCount $ subtractOneForPositive w)
         
-transferDiskTo :: Color -> BlackWhite Tagged_UnusedDiskCount -> BlackWhite Tagged_UnusedDiskCount
-transferDiskTo color bw =
-    let
-        ( b, w ) = blacksWhites bw
 
-        ( b', w' ) = 
-            case color of
-                Black -> ( increaseByOne b, decreaseByOne w )
-                White -> ( decreaseByOne b, increaseByOne w )
-    in
-        makeBlackWhite b' w'
-
-
-decreaseByOneFor :: Color -> BlackWhite Tagged_UnusedDiskCount -> BlackWhite Tagged_UnusedDiskCount
-decreaseByOneFor color bw =
-    let
-        ( b, w ) = blacksWhites bw
-
-        ( b', w' ) = 
-            case color of
-                Black -> ( decreaseByOne b, w )
-                White -> ( b, decreaseByOne w )
-    in
-        makeBlackWhite b' w'
+subtractOneForPositive :: Int -> Int
+subtractOneForPositive n =
+    if n < 1 then n else n - 1
 
 
 countFrom :: Tagged_UnusedDiskCount -> Int
 countFrom tagged =
     case tagged of
-        Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount (UnusedDiskCount n)) -> n
-        Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount (UnusedDiskCount n)) -> n   
+        Tagged_BlackUnusedDiskCount (BlackUnusedDiskCount n) -> n
+        Tagged_WhiteUnusedDiskCount (WhiteUnusedDiskCount n) -> n   

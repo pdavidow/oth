@@ -15,11 +15,11 @@ import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), Fi
 import Position ( PosRow(..), radiatingPosRows )
 import Disk ( Color(..), flipCount, toggleColor )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom )
-import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOne, makeBlackUnusedDiskCount, makeWhiteUnusedDiskCount )
+import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOneFor, makeUnusedDiskCounts )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
-import BlackWhite ( BlackWhite(..), blacksWhites, makeBlackWhite )
+import BlackWhite ( BlackWhite(..), BlackWhiteH(..) )
 import Lib ( mapTakeWhile )
 
 main = defaultMain tests
@@ -60,7 +60,7 @@ boardWithValidMovesDisplay showMoves board =
 
 filledPositions_BlackWhite :: Board -> BlackWhite [(Int, Int)]         
 filledPositions_BlackWhite board =
-    makeBlackWhite (f Black) (f White)
+    BlackWhite (f Black) (f White)
         where f = \ color -> map (posCoords . toPos . Tagged_FilledSquare) $ boardSquaresColored color board
 
 
@@ -371,7 +371,7 @@ unitTests = testGroup "Unit tests" $
                   board = board_Figure2
                   moves = validMoves White board
                   move0 = moves !! 0
-                  (bp, wp) = blacksWhites $ filledPositions_BlackWhite $ applyBoardMove move0 board 
+                  (BlackWhite bp wp) = filledPositions_BlackWhite $ applyBoardMove move0 board 
                 in
                     [ testCase "filledPositions black" $ bp @?= [(4,3), (4,6), (5,5), (6,3), (7,4)]
                     , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,2), (5,3), (6,4), (7,5)]                                                                             
@@ -382,7 +382,7 @@ unitTests = testGroup "Unit tests" $
                     board = board_Figure2
                     moves = validMoves White board
                     move1 = moves !! 1
-                    (bp, wp) = blacksWhites $ filledPositions_BlackWhite $ applyBoardMove move1 board
+                    (BlackWhite bp wp) = filledPositions_BlackWhite $ applyBoardMove move1 board
                 in
                     [ testCase "filledPositions black" $ bp @?= []
                     , testCase "filledPositions white" $ wp @?= [(3,3), (3,7), (4,3), (4,6), (5,3), (5,5), (6,3), (6,4), (7,3), (7,4), (7,5)]                                                                             
@@ -395,25 +395,25 @@ unitTests = testGroup "Unit tests" $
             history1 = makeHistory
 
             taggedState1 = NE.last history1
-            (bp1, wp1) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState1
+            (BlackWhite bp1 wp1) = filledPositions_BlackWhite $ board_FromTaggedState taggedState1
             moves1 = actual_NextMoves_FromTaggedState taggedState1
             move1 = head moves1
             history2 = fromRight history1 $ applyMoveOnHistory move1 history1 
 
             taggedState2 = NE.last history2
-            (bp2, wp2) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState2
+            (BlackWhite bp2 wp2) = filledPositions_BlackWhite $ board_FromTaggedState taggedState2
             moves2 = actual_NextMoves_FromTaggedState taggedState2
             move2 = head moves2
             history3 = fromRight history1 $ applyMoveOnHistory move2 history2     
 
             taggedState3 = NE.last history3
-            (bp3, wp3) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState3
+            (BlackWhite bp3 wp3) = filledPositions_BlackWhite $ board_FromTaggedState taggedState3
             moves3 = actual_NextMoves_FromTaggedState taggedState3
             move3 = head moves3
             history4 = fromRight history1 $ applyMoveOnHistory move3 history3 
 
             taggedState4 = NE.last history4     
-            (bp4, wp4) = blacksWhites $ filledPositions_BlackWhite $ board_FromTaggedState taggedState4    
+            (BlackWhite bp4 wp4) = filledPositions_BlackWhite $ board_FromTaggedState taggedState4    
 
             numberedMovesWithPos1 = movePosChoices moves1
             numberedMovesWithPos2 = movePosChoices moves2
@@ -423,9 +423,9 @@ unitTests = testGroup "Unit tests" $
             display3 = gameStateDisplay Nothing taggedState2
             display4 = gameStateDisplay (Just numberedMovesWithPos2) taggedState2
 
-            (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
-            (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
-            (b3, w3) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState3
+            (BlackWhite b1 w1) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
+            (BlackWhite b2 w2) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
+            (BlackWhite b3 w3) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState3
 
             (Tagged_MidState (MidState priorMove2 _ _ _)) = taggedState2 -- if pattern match fails (due to bug), then raise exception which is fine
             (Tagged_MidState (MidState priorMove3 _ _ _)) = taggedState3 -- if pattern match fails (due to bug), then raise exception which is fine
@@ -471,14 +471,13 @@ unitTests = testGroup "Unit tests" $
               
               , testGroup "Black uses very last disk on first move (contrived)" $ 
                   let
-                      startState@(StartState c n (CoreState b w board)) = makeStartState
-                      (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
-                      (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                      startState@(StartState c n (CoreState u board)) = makeStartState
+                      (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
 
-                      (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne tb !! (nb - 1) 
-                      (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
+                      u' = iterate (decreaseByOneFor Black) u !! (nb - 1)
+                      u'' = iterate (decreaseByOneFor White) u' !! nw 
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w' board
+                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState u'' board
                       history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
@@ -491,7 +490,7 @@ unitTests = testGroup "Unit tests" $
 
               , testGroup "Black on first move is confronted with full White board -- except for (1,1) which is Black, and (1,8) which is blank (contrived)" $
                   let
-                      (StartState c n (CoreState b w board)) = makeStartState
+                      (StartState c n (CoreState u board)) = makeStartState
 
                       board' = boardFromConfig $ 
                           [(Black, (makeValidPosition 1 1))] ++ 
@@ -504,7 +503,7 @@ unitTests = testGroup "Unit tests" $
                           [(White, (makeValidPosition boardSize boardSize))] ++
                           tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
-                      taggedState1 = Tagged_StartState $ StartState Black (nextMovesFrom c board') $ CoreState makeBlackUnusedDiskCount makeWhiteUnusedDiskCount board'
+                      taggedState1 = Tagged_StartState $ StartState Black (nextMovesFrom c board') $ CoreState u board'
                       history1 = NE.fromList $ [taggedState1]
                       move = head $ actual_NextMoves_FromTaggedState taggedState1
 
@@ -517,11 +516,11 @@ unitTests = testGroup "Unit tests" $
 
               , testGroup "Black on first move is confronted with full White board -- except for (1,1) which is Black, and last column which is blank (contrived)" $
                     let
-                        (StartState c n (CoreState b w board)) = makeStartState
+                        (StartState c n (CoreState u board)) = makeStartState
 
                         board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
-                        taggedState1 = Tagged_StartState $ StartState c (nextMovesFrom c board') $ CoreState b w board'
+                        taggedState1 = Tagged_StartState $ StartState c (nextMovesFrom c board') $ CoreState u board'
                         history1 = NE.fromList $ [taggedState1]
                         moves1 = actual_NextMoves_FromTaggedState taggedState1
 
@@ -537,13 +536,12 @@ unitTests = testGroup "Unit tests" $
     
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
-                      startState@(StartState c n (CoreState b w board)) = makeStartState
-                      (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
-                      (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                      startState@(StartState c n (CoreState u board)) = makeStartState
+                      (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
 
-                      (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw
+                      u' = iterate (decreaseByOneFor White) u !! nw
 
-                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState b w' board
+                      taggedState1 = Tagged_StartState $ StartState c n $ CoreState u' board
                       history1 = NE.fromList $ [taggedState1]
                       moves1 = actual_NextMoves_FromTaggedState taggedState1
 
@@ -554,8 +552,8 @@ unitTests = testGroup "Unit tests" $
                       history3 = fromRight history1 $ applyMoveOnHistory (head moves2) history2
                       taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = NE.last history3
 
-                      (b1, w1) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
-                      (b2, w2) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
+                      (BlackWhite b1 w1) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
+                      (BlackWhite b2 w2) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
                   in
                       [ testCase "initial disk counts" $  
                         (b1, w1) @?= (32, 0) 
@@ -570,11 +568,11 @@ unitTests = testGroup "Unit tests" $
               , testGroup "Validate Move" $
                   [ testGroup "NotOutflanking (contrived)" $
                       let
-                          (StartState c n (CoreState b w board)) = makeStartState
+                          (StartState c n (CoreState u board)) = makeStartState
 
                           board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
-                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState b w board'
+                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState u board'
                           history1 = NE.fromList $ [taggedState1]
                           -- Black on first move is confronted with full White board -- except for last column which is blank
                           move = Move Black (head $ emptySquares board') $ Outflanks []
@@ -587,11 +585,11 @@ unitTests = testGroup "Unit tests" $
 
                   , testGroup "NoAvailableDisk (contrived)" $
                       let
-                          startState@(StartState c n (CoreState b w board)) = makeStartState
-                          (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
-                          (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne (Tagged_BlackUnusedDiskCount b) !! nb
+                          startState@(StartState c n (CoreState u board)) = makeStartState
+                          (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          u' = iterate (decreaseByOneFor Black) u !! nb
  
-                          taggedState1 = Tagged_StartState $ StartState c n $ CoreState b' w board
+                          taggedState1 = Tagged_StartState $ StartState c n $ CoreState u' board
                           history1 = NE.fromList $ [taggedState1]
                           -- Black on first move is confronted with no available disks
                           move = head $ actual_NextMoves_FromTaggedState taggedState1
@@ -618,16 +616,15 @@ unitTests = testGroup "Unit tests" $
                           
                   , testGroup "WrongColor, NoAvailableDisk, NotOutflanking (contrived)" $
                       let
-                          startState@(StartState c n (CoreState b w board)) = makeStartState
+                          startState@(StartState c n (CoreState u board)) = makeStartState
                           board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
-                          (tb, tw) = (Tagged_BlackUnusedDiskCount b, Tagged_WhiteUnusedDiskCount w)
-                          (nb, nw) = blacksWhites $ actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
                           
-                          (Tagged_BlackUnusedDiskCount b') = iterate decreaseByOne tb !! nb
-                          (Tagged_WhiteUnusedDiskCount w') = iterate decreaseByOne tw !! nw 
+                          u' = iterate (decreaseByOneFor Black) u !! nb
+                          u'' = iterate (decreaseByOneFor White) u' !! nw 
    
-                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState b' w' board'
+                          taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState u'' board'
                           history1 = NE.fromList $ [taggedState1]
 
                           move = Move White (head $ emptySquares board') $ Outflanks []

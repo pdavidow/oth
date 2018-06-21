@@ -45,7 +45,7 @@ import Safe ( headMay, tailMay )
 import Disk ( Disk, Color(..), diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
 import Position ( Position, PosRow(..), makeValidPosition, adjacentPositions, posCoords, radiatingPosRows )
-import BlackWhite ( BlackWhite(..), makeBlackWhite, blacksWhites )
+import BlackWhite ( BlackWhite(..) )
 import Lib ( mapTakeWhile ) 
  
 newtype RadiatingPosRows = RadiatingPosRows [PosRow] deriving (Eq, Show)
@@ -291,7 +291,7 @@ colorCount color board =
 
 squaresColoredCounts_BlackWhite :: Board -> BlackWhite Int
 squaresColoredCounts_BlackWhite board =
-    makeBlackWhite (colorCount Black board) (colorCount White board)   
+    BlackWhite (colorCount Black board) (colorCount White board)   
             
 
 moveColor :: Move -> Color
@@ -359,8 +359,8 @@ dummyMove =
 
 cornerCounts_BlackWhite :: Board -> BlackWhite Int
 cornerCounts_BlackWhite board =
-    makeBlackWhite (length b) (length w)
-        where ( b, w ) = blacksWhites $ corners_BlackWhite board
+    BlackWhite (length b) (length w)
+        where (BlackWhite b w) = corners_BlackWhite board
 
 
 corners_BlackWhite :: Board -> BlackWhite [FilledSquare]
@@ -369,7 +369,7 @@ corners_BlackWhite board =
         xs = filledCorners board
         f = \ color -> filter (isSquareColored color) xs
     in
-        makeBlackWhite (f Black) (f White)
+        BlackWhite (f Black) (f White)
 
 
 filledSquaresAdjacentToEmptyCorners :: Board -> [FilledSquare]
