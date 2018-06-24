@@ -11,7 +11,7 @@ import qualified Data.List.NonEmpty as NE ( NonEmpty, last, fromList, toList )
 
 import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, playerColor ) 
 import PlayerType ( PlayerType(..) )
-import State ( Tagged_State(..), EndState, MoveValidationError(..), applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
+import State ( Tagged_State(..), EndState, MoveValidationError(..), History, applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
 import Disk ( Color(..) )
 import Position ( Position, makeValidPosition )
@@ -20,7 +20,7 @@ import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, best
 import Lib ( getValidChoice ) 
 
  
-moveSequence :: (PlayerBlack, PlayerWhite) -> NE.NonEmpty Tagged_State -> IO ()
+moveSequence :: (PlayerBlack, PlayerWhite) -> History -> IO ()
 moveSequence players history = do 
     let taggedState = NE.last history     
     let taggedPlayer = nextPlayer players taggedState
@@ -41,7 +41,7 @@ moveSequence players history = do
     advance players move history'
  
 
-advance :: (PlayerBlack, PlayerWhite) -> Move -> NE.NonEmpty Tagged_State -> IO ()
+advance :: (PlayerBlack, PlayerWhite) -> Move -> History -> IO ()
 advance players move history = do  
     let eiHistory' = applyMoveOnHistory move history
 
@@ -64,7 +64,7 @@ nextPlayer (pb, pw) taggedState =
         White -> Tagged_PlayerWhite pw
 
 
-personChoose :: Color -> SuggestionSearchDepth -> NE.NonEmpty Tagged_State -> IO (Int, NE.NonEmpty Tagged_State)
+personChoose :: Color -> SuggestionSearchDepth -> History -> IO (Int, History)
 personChoose color suggestionSearchDepth history = do
     let moves = actual_NextMoves_FromTaggedState $ NE.last history   
     let numberedMovesWithPos = movePosChoices moves
@@ -72,7 +72,7 @@ personChoose color suggestionSearchDepth history = do
     return (n, history')
 
 
-handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> NE.NonEmpty Tagged_State -> IO (Int, NE.NonEmpty Tagged_State)
+handlePersonChoose :: Color -> [(Int, Position)] -> [Move] -> SuggestionSearchDepth -> History -> IO (Int, History)
 handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth searchDepth) history = do
     let taggedState = NE.last history     
     let mbHistory' = undoHistoryOnceForColor color history 

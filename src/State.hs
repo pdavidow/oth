@@ -13,6 +13,7 @@ module State
     , GameSummary(..)
     , Winner(..)
     , MoveValidationError(..)
+    , History
     , makeStartState
     , makeHistory
     , priorMoveColor
@@ -92,6 +93,8 @@ data MoveValidationError
     | DefaultDummy
         deriving (Eq, Show)
 
+
+type History = NE.NonEmpty Tagged_State        
 ------------------
 
 instance Game_tree Tagged_State 
@@ -302,12 +305,12 @@ actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
         where (BlackWhiteH b w) = unusedDiskCounts_FromTaggedState taggedState
 
 
-makeHistory :: NE.NonEmpty Tagged_State
+makeHistory :: History
 makeHistory =
     NE.fromList $ [Tagged_StartState makeStartState]
 
 
-validateMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> [MoveValidationError] 
+validateMoveOnHistory :: Move -> History -> [MoveValidationError] 
 validateMoveOnHistory move history = 
     let
         lastState = NE.last history
@@ -334,7 +337,7 @@ validateMoveOnHistory move history =
         (if isNotOutflanking  then [NotOutflanking]  else []) 
 
 
-applyMoveOnHistory :: Move -> NE.NonEmpty Tagged_State -> Either (NE.NonEmpty MoveValidationError) (NE.NonEmpty Tagged_State)
+applyMoveOnHistory :: Move -> History -> Either (NE.NonEmpty MoveValidationError) History
 applyMoveOnHistory move history = 
     let
         errors = validateMoveOnHistory move history
@@ -346,13 +349,13 @@ applyMoveOnHistory move history =
             Left $ NE.fromList $ errors
 
 
-undoHistoryOnce :: NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
+undoHistoryOnce :: History -> Maybe History
 undoHistoryOnce history = 
     undoHistoryOnceForColor color history
         where color = fromMaybe Black $ nextMoveColor_FromTaggedState $ NE.last history -- should never use default
         
 
-undoHistoryOnceForColor :: Color -> NE.NonEmpty Tagged_State -> Maybe (NE.NonEmpty Tagged_State)
+undoHistoryOnceForColor :: Color -> History -> Maybe History
 undoHistoryOnceForColor color history = 
     let
         lastState = NE.last history
