@@ -9,6 +9,8 @@ module Position
     )
     where
 
+-- Origin is at top left of board, where x is vertical axis, y horizontal 
+
 import Data.Either ( rights )
 import Data.Function ( (&) )
 
@@ -58,6 +60,11 @@ adjacentPositions (Position i j) =
     , (i-1, j  ),           (i+1, j  )
     , (i-1, j+1), (i, j+1), (i+1, j+1)
     ]
+    -- todo to conform to nomenclature, but technically unnecessary (tests will need updating)
+    -- [ (i-1, j-1), (i-1, j), (i-1, j+1)
+    -- , (i,   j-1),           (i  , j+1)
+    -- , (i+1, j-1), (i+1, j), (i+1, j+1)
+    -- ]   
         & map (\ (i', j') -> makePosition i' j')
         & rights
 
