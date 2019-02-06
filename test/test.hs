@@ -1,8 +1,6 @@
 -- http://documentup.com/feuerbach/tasty
  
-import Test.Tasty
-import Test.Tasty.SmallCheck as SC
-import Test.Tasty.QuickCheck as QC
+import Test.Tasty  
 import Test.Tasty.HUnit
  
 import Data.Function ( (&) )
@@ -15,12 +13,12 @@ import Board ( Board, EmptySquare(..), FilledSquare, Move(..), Outflanks(..), Fi
 import Position ( PosRow(..), radiatingPosRows )
 import Color ( Color(..) )
 import Disk ( flipCount, toggleColor )
-import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom )
-import UnusedDiskCount ( Tagged_UnusedDiskCount(..), countFrom, decreaseByOneFor, makeUnusedDiskCounts )
+import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom, unusedDiskCounts_FromTaggedState )
+import UnusedDiskCount ( UnusedDiskCounts, decreaseByOneFor, makeUnusedDiskCounts )
 import BoardSize ( boardSize )
 import Position ( Position, makeValidPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
-import BlackWhite ( BlackWhite(..), BlackWhiteH(..) )
+import BlackWhite ( BlackWhite(..) )
 import Lib ( mapTakeWhile )
 
 main = defaultMain tests
@@ -424,9 +422,9 @@ unitTests = testGroup "Unit tests" $
             display3 = gameStateDisplay Nothing taggedState2
             display4 = gameStateDisplay (Just numberedMovesWithPos2) taggedState2
 
-            (BlackWhite b1 w1) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
-            (BlackWhite b2 w2) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
-            (BlackWhite b3 w3) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState3
+            (BlackWhite b1 w1) = unusedDiskCounts_FromTaggedState taggedState1
+            (BlackWhite b2 w2) = unusedDiskCounts_FromTaggedState taggedState2
+            (BlackWhite b3 w3) = unusedDiskCounts_FromTaggedState taggedState3
 
             (Tagged_MidState (MidState priorMove2 _ _ _)) = taggedState2 -- if pattern match fails (due to bug), then raise exception which is fine
             (Tagged_MidState (MidState priorMove3 _ _ _)) = taggedState3 -- if pattern match fails (due to bug), then raise exception which is fine
@@ -473,7 +471,7 @@ unitTests = testGroup "Unit tests" $
               , testGroup "Black uses very last disk on first move (contrived)" $ 
                   let
                       startState@(StartState c n (CoreState u board)) = makeStartState
-                      (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                      (BlackWhite nb nw) = unusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
                       u' = iterate (decreaseByOneFor Black) u !! (nb - 1)
                       u'' = iterate (decreaseByOneFor White) u' !! nw 
@@ -538,7 +536,7 @@ unitTests = testGroup "Unit tests" $
               , testGroup "White with no disks for his first move, is given one by Black (contrived)" $
                   let
                       startState@(StartState c n (CoreState u board)) = makeStartState
-                      (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                      (BlackWhite nb nw) = unusedDiskCounts_FromTaggedState $ Tagged_StartState startState
 
                       u' = iterate (decreaseByOneFor White) u !! nw
 
@@ -553,8 +551,8 @@ unitTests = testGroup "Unit tests" $
                       history3 = fromRight history1 $ applyMoveOnHistory (head moves2) history2
                       taggedState3@(Tagged_MidState (MidState _ midStatus3 _ _)) = NE.last history3
 
-                      (BlackWhite b1 w1) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState1
-                      (BlackWhite b2 w2) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState2
+                      (BlackWhite b1 w1) = unusedDiskCounts_FromTaggedState taggedState1
+                      (BlackWhite b2 w2) = unusedDiskCounts_FromTaggedState taggedState2
                   in
                       [ testCase "initial disk counts" $  
                         (b1, w1) @?= (32, 0) 
@@ -587,7 +585,7 @@ unitTests = testGroup "Unit tests" $
                   , testGroup "NoAvailableDisk (contrived)" $
                       let
                           startState@(StartState c n (CoreState u board)) = makeStartState
-                          (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          (BlackWhite nb nw) = unusedDiskCounts_FromTaggedState $ Tagged_StartState startState
                           u' = iterate (decreaseByOneFor Black) u !! nb
  
                           taggedState1 = Tagged_StartState $ StartState c n $ CoreState u' board
@@ -620,7 +618,7 @@ unitTests = testGroup "Unit tests" $
                           startState@(StartState c n (CoreState u board)) = makeStartState
                           board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
-                          (BlackWhite nb nw) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite $ Tagged_StartState startState
+                          (BlackWhite nb nw) = unusedDiskCounts_FromTaggedState $ Tagged_StartState startState
                           
                           u' = iterate (decreaseByOneFor Black) u !! nb
                           u'' = iterate (decreaseByOneFor White) u' !! nw 

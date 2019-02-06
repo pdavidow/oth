@@ -19,7 +19,7 @@ import Disk ( diskColor, flipCount )
 import Position ( Position )
 import BoardSize ( boardSize )
 import ColumnName ( columnLegend, posNomenclature )
-import State ( EndState, Tagged_State, PriorMove(..), GameSummary(..), EndStatus(..), Winner(..), board_FromTaggedState, actual_UnusedDiskCounts_FromTaggedState_BlackWhite, gameSummary, winner, mbPriorMove_FromTaggedState, actual_mbPriorMove_FromTaggedState, priorMoveColor )
+import State ( EndState, Tagged_State, PriorMove(..), GameSummary(..), EndStatus(..), Winner(..), board_FromTaggedState, gameSummary, winner, mbPriorMove_FromTaggedState, actual_mbPriorMove_FromTaggedState, priorMoveColor, unusedDiskCounts_FromTaggedState )
 import SquareCount ( Tagged_SquareCount(..), countFrom )
 import BlackWhite ( BlackWhite(..) )
 import Lib ( vSlice ) 
@@ -208,10 +208,10 @@ gameStateDisplayFooter taggedState =
         part1 ++ "\n\n" ++ part2
 
 
-unusedDisksDisplay :: Tagged_State -> String
+unusedDisksDisplay :: Tagged_State -> String 
 unusedDisksDisplay taggedState =
     let
-        ( BlackWhite b w ) = actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState
+        ( BlackWhite b w ) = unusedDiskCounts_FromTaggedState taggedState
         f = \ n char -> intersperse ' '  (replicate n $ char)
 
         blackUnused = "Black " ++ show b ++ ": " ++ (f b $ defaultDiskIconChar Black)        
@@ -235,4 +235,4 @@ gameSummaryDisplay endState =
             WinnerColor color -> "Winner is " ++ (colorAllCapsString color)
             Tie               -> "TIE game"
     in 
-        "GAME OVER (" ++ reasonString ++ ") " ++ winnerString ++ ".  Disk-counts: Black " ++ show (SquareCount.countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (SquareCount.countFrom $ Tagged_WhiteSquareCount w)
+        "GAME OVER (" ++ reasonString ++ ") " ++ winnerString ++ ".  Disk-counts: Black " ++ show (countFrom $ Tagged_BlackSquareCount b) ++ "; White " ++ show (countFrom $ Tagged_WhiteSquareCount w)

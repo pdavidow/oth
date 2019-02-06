@@ -1,11 +1,13 @@
-{-# LANGUAGE DuplicateRecordFields #-}
-
 module BlackWhite
     ( BlackWhite(..)
-    , BlackWhiteH(..)
+    , makeBlackWhite
     )
     where
 
 
-data BlackWhite a = BlackWhite {black :: a, white :: a} deriving (Eq, Show)
-data BlackWhiteH a b = BlackWhiteH {black :: a, white :: b} deriving (Eq, Show)
+data BlackWhite a = BlackWhite a a deriving (Eq, Show)
+
+
+makeBlackWhite :: a -> a -> BlackWhite a
+makeBlackWhite b w =
+    BlackWhite b w

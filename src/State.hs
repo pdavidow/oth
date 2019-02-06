@@ -26,10 +26,10 @@ module State
     , nextMoveColor_FromMidState
     , mbPriorMove_FromTaggedState
     , actual_NextMoves_FromTaggedState
-    , actual_UnusedDiskCounts_FromTaggedState_BlackWhite
     , actual_mbPriorMove_FromTaggedState
     , undoHistoryOnce
     , undoHistoryOnceForColor
+    , unusedDiskCounts_FromTaggedState
     , isForfeitTurn -- todo only used in testing
     , nextMovesFrom -- todo only used in testing
     )   
@@ -44,10 +44,10 @@ import qualified Data.List.NonEmpty as NE ( NonEmpty, dropWhile, fromList, head,
 import Color ( Color(..) )
 import Disk ( toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
-import UnusedDiskCount ( UnusedDiskCounts, BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeUnusedDiskCounts, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
+import UnusedDiskCount ( UnusedDiskCounts, makeUnusedDiskCounts, transferDiskTo, decreaseByOneFor )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
 import Position ( isValidCoords, makeValidPosition, posCoords )
-import BlackWhite ( BlackWhite(..), BlackWhiteH(..) )
+import BlackWhite ( BlackWhite(..) )
 
 
 data CoreState = CoreState UnusedDiskCounts Board deriving (Eq, Show)
@@ -142,10 +142,10 @@ nextMovesFrom color board =
 
 
 isZeroUnusedDiskCount :: Color -> CoreState -> Bool
-isZeroUnusedDiskCount color (CoreState (BlackWhiteH b w) _) =
+isZeroUnusedDiskCount color (CoreState (BlackWhite b w) _) =
     case color of
-        Black -> isZeroCount $ Tagged_BlackUnusedDiskCount b
-        White -> isZeroCount $ Tagged_WhiteUnusedDiskCount w
+        Black -> b == 0
+        White -> w == 0
 
 
 applyMoveOnState :: Move -> Tagged_State -> Tagged_State
@@ -218,8 +218,8 @@ winner :: GameSummary -> Winner
 winner (GameSummary _ b w) =  
     -- Rule 10: Disks are counted and the player with the majority of their color showing is the winner.
     let
-        nBlack = SquareCount.countFrom $ Tagged_BlackSquareCount b
-        nWhite = SquareCount.countFrom $ Tagged_WhiteSquareCount w
+        nBlack = countFrom $ Tagged_BlackSquareCount b
+        nWhite = countFrom $ Tagged_WhiteSquareCount w
     in
         if nBlack > nWhite then
             WinnerColor Black
@@ -298,12 +298,6 @@ actual_NextMoves_FromTaggedState taggedState =
         Tagged_StartState (StartState _ (NextMoves x) _) -> x
         Tagged_MidState (MidState _ _ (NextMoves x) _)   -> x
         Tagged_EndState _                                -> []
-        
-    
-actual_UnusedDiskCounts_FromTaggedState_BlackWhite :: Tagged_State -> BlackWhite Int
-actual_UnusedDiskCounts_FromTaggedState_BlackWhite taggedState =
-    BlackWhite (UnusedDiskCount.countFrom $ Tagged_BlackUnusedDiskCount b) (UnusedDiskCount.countFrom $ Tagged_WhiteUnusedDiskCount w)
-        where (BlackWhiteH b w) = unusedDiskCounts_FromTaggedState taggedState
 
 
 makeHistory :: History
