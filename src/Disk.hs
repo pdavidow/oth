@@ -1,6 +1,5 @@
 module Disk
     ( Disk -- hiding constructor
-    , Color(..)
     , diskColor
     , flipCount
     , flipDisk
@@ -9,13 +8,14 @@ module Disk
     )
     where
 
+import Color ( Color(..) )
+
+
 data Disk = Disk InitColor FlipCount deriving (Eq, Show)
 
 newtype InitColor = InitColor Color deriving (Eq, Show)
 
 newtype FlipCount = FlipCount Int deriving (Eq, Show)
-
-data Color = Black | White deriving (Eq, Ord, Show)
 
 
 makeDisk :: Color -> Disk

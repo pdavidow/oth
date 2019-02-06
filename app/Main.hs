@@ -5,7 +5,7 @@ import PlayerType ( PlayerType(..) )
 import Sequencer ( moveSequence )
 import State ( makeHistory ) 
 import Engine ( Strategy(..), SearchDepth(..), SuggestionSearchDepth(..) )
-import Disk ( Color(..) )
+import Color ( Color(..) )
 import Lib ( getValidChoice )
 
 

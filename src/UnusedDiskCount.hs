@@ -12,7 +12,7 @@ module UnusedDiskCount
     where
 
 import Data.Function ( (&) )
-import Disk ( Color(..) )
+import Color ( Color(..) )
 
 import BoardSize ( boardSize )
 import BlackWhite ( BlackWhiteH(..) ) 
@@ -22,7 +22,7 @@ newtype BlackUnusedDiskCount = BlackUnusedDiskCount Int deriving (Eq, Show)
 
 newtype WhiteUnusedDiskCount = WhiteUnusedDiskCount Int deriving (Eq, Show)
 
-type UnusedDiskCounts = BlackWhiteH BlackUnusedDiskCount WhiteUnusedDiskCount 
+type UnusedDiskCounts = BlackWhiteH BlackUnusedDiskCount WhiteUnusedDiskCount  
 
 data Tagged_UnusedDiskCount
     = Tagged_BlackUnusedDiskCount BlackUnusedDiskCount

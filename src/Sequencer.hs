@@ -13,7 +13,7 @@ import Player ( PlayerBlack, PlayerWhite, Tagged_Player(..), playerTypeFrom, pla
 import PlayerType ( PlayerType(..) )
 import State ( Tagged_State(..), EndState, MoveValidationError(..), History, applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
-import Disk ( Color(..) )
+import Color ( Color(..) )
 import Position ( Position, makeValidPosition )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
 import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, bestNextMove, searchPhrase )

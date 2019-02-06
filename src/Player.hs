@@ -9,7 +9,7 @@ module Player
     )
     where
 
-import Disk ( Color(..) )
+import Color ( Color(..) )
 import PlayerType ( PlayerType(..) )
 
 

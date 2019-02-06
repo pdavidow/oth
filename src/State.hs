@@ -41,7 +41,8 @@ import Data.Tree.Game_tree.Game_tree
 import Data.Array ( listArray, (!) )
 import qualified Data.List.NonEmpty as NE ( NonEmpty, dropWhile, fromList, head, init, last, length, reverse, toList )
 
-import Disk ( Color(..), toggleColor )
+import Color ( Color(..) )
+import Disk ( toggleColor )
 import Board ( Board, Move(..), Tagged_Square(..), applyBoardMove, initialBoard, squaresColoredCounts_BlackWhite, validMoves, moveColor, boardAt, filledSquares, toFilledSquare, isSquareColored, isEmptyAt, boardSquaresColored, toPos, cornerCounts_BlackWhite, filledSquaresAdjacentToEmptyCorners ) 
 import UnusedDiskCount ( UnusedDiskCounts, BlackUnusedDiskCount, WhiteUnusedDiskCount, Tagged_UnusedDiskCount(..), makeUnusedDiskCounts, isZeroCount, transferDiskTo, decreaseByOneFor, countFrom )
 import SquareCount ( BlackSquareCount, WhiteSquareCount, Tagged_SquareCount(..), makeBlackSquareCount, makeWhiteSquareCount, countFrom )
