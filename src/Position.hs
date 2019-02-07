@@ -1,7 +1,12 @@
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE TemplateHaskell #-}
+
 module Position
-    ( Position -- hiding constructor
+    ( Position(..)
     , PosRow(..)
-    , makeValidPosition
+    , BoardCoord
+    , mkPosition
     , posCoords
     , adjacentPositions
     , radiatingPosRows
@@ -13,45 +18,34 @@ module Position
 
 import Data.Either ( rights )
 import Data.Function ( (&) )
+import GHC.TypeLits (Nat)
+import Language.Haskell.TH
+import Refined ( Refined(..), FromTo, refineTH, unrefine )
 
 import BoardSize ( boardSize )
 
-data Position = Position {x :: Int, y :: Int} deriving (Eq, Show) -- one-based
+data Position = Position BoardCoord BoardCoord deriving (Eq, Show) -- one-based
 
 newtype PosRow = PosRow [Position] deriving (Eq, Show)
 
 data Dir = Inc | Dec
 
-
-isValidCoord :: Int -> Bool
-isValidCoord x = 
-    x >= 1 && x <= boardSize
+type BoardCoord = Refined FromTo (1 :: Nat) (8 :: Nat) ------------------------------------------(boardSize :: Nat)  
 
 
-isValidCoords :: (Int, Int) -> Bool
-isValidCoords (i, j) =
-    isValidCoord i && isValidCoord j
+mkBoardCoord :: Int -> BoardCoord
+mkBoardCoord n =
+    $$(refineTH (n :: Nat)) :: BoardCoord
 
 
-makePosition :: Int -> Int -> Either String Position
-makePosition i j =
-    let
-        sizeString = show boardSize
-    in
-        if isValidCoords (i,j) then
-            Right $ Position i j
-        else
-            Left $ "Out of Bounds: Position ranges from (1,1) to ("  ++ sizeString ++ ","  ++ sizeString ++ ") inclusive"
-
-
-makeValidPosition :: Int -> Int -> Position
-makeValidPosition i j =
-    either error id $ makePosition i j
+mkPosition :: Int -> Int -> Position
+mkPosition i j =
+    Position (mkBoardCoord i) (mkBoardCoord j)
 
 
 posCoords :: Position -> (Int, Int)
 posCoords (Position i j) = 
-    (i, j)
+    (unrefine i, unrefine j)
 
 
 adjacentPositions :: Position -> [Position]
@@ -60,12 +54,7 @@ adjacentPositions (Position i j) =
     , (i-1, j  ),           (i+1, j  )
     , (i-1, j+1), (i, j+1), (i+1, j+1)
     ]
-    -- todo to conform to nomenclature, but technically unnecessary (tests will need updating)
-    -- [ (i-1, j-1), (i-1, j), (i-1, j+1)
-    -- , (i,   j-1),           (i  , j+1)
-    -- , (i+1, j-1), (i+1, j), (i+1, j+1)
-    -- ]   
-        & map (\ (i', j') -> makePosition i' j')
+        & map (\ (i', j') -> mkPosition i' j')
         & rights
 
 
@@ -92,42 +81,42 @@ radiatingPosRows pos =
 
 rowVertUp :: Position -> PosRow
 rowVertUp (Position i j) =   
-    PosRow $ [ Position i' j' | i' <- reverse [1..(i-1)], j' <- [j] ]
+    PosRow $ [ mkPosition i' j' | i' <- reverse [1..(unrefine i - 1)], j' <- [unrefine j] ]
 
 
 rowVertDown :: Position -> PosRow
 rowVertDown (Position i j) =   
-    PosRow $ [ Position i' j' | i' <- [(i+1)..boardSize], j' <- [j] ]
+    PosRow $ [ mkPosition i' j' | i' <- [(unrefine i + 1)..boardSize], j' <- [unrefine j] ]
 
 
 rowHorizRight :: Position -> PosRow
 rowHorizRight (Position i j) =   
-    PosRow $ [ Position i' j' | i' <- [i], j' <- [(j+1)..boardSize] ]
+    PosRow $ [ mkPosition i' j' | i' <- [unrefine i], j' <- [(unrefine j + 1)..boardSize] ]
 
 
 rowHorizLeft :: Position -> PosRow
 rowHorizLeft (Position i j) =   
-    PosRow $ [ Position i' j' | i' <- [i], j' <- reverse [1..(j-1)] ]
+    PosRow $ [ mkPosition i' j' | i' <- [unrefine i], j' <- reverse [1..(unrefine j - 1)] ]
         
 
 rowDiagUpRight :: Position -> PosRow
 rowDiagUpRight (Position i j) =  
-    rowDiag Dec Inc $ Position (i-1) (j+1)
+    rowDiag Dec Inc $ mkPosition (unrefine i - 1) (unrefine j + 1)
 
 
 rowDiagUpLeft :: Position -> PosRow
 rowDiagUpLeft (Position i j) = 
-    rowDiag Dec Dec $ Position (i-1) (j-1)  
+    rowDiag Dec Dec $ mkPosition (unrefine i - 1) (unrefine j - 1)  
 
 
 rowDiagDownRight :: Position -> PosRow
 rowDiagDownRight (Position i j) = 
-    rowDiag Inc Inc $ Position (i+1) (j+1) 
+    rowDiag Inc Inc $ mkPosition (unrefine i + 1) (unrefine j + 1) 
 
 
 rowDiagDownLeft :: Position -> PosRow
 rowDiagDownLeft (Position i j) =
-    rowDiag Inc Dec $ Position (i+1) (j-1) 
+    rowDiag Inc Dec $ mkPosition (unrefine i + 1) (unrefine j - 1) 
 
 
 rowDiag :: Dir -> Dir -> Position -> PosRow
@@ -155,6 +144,6 @@ rowDiag horizDir vertDir (Position i j) =
                     x' = f horizDir x
                     y' = f vertDir y
                 in 
-                    go (result ++ [Position x y]) x' y'
+                    go (result ++ [mkPosition x y]) x' y'
     in
-        PosRow $ go [] i j
+        PosRow $ go [] (unrefine i) (unrefine j)

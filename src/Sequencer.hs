@@ -14,7 +14,7 @@ import PlayerType ( PlayerType(..) )
 import State ( Tagged_State(..), EndState, MoveValidationError(..), History, applyMoveOnHistory, board_FromTaggedState, nextMoveColor_FromTaggedState, actual_NextMoves_FromTaggedState, undoHistoryOnceForColor )
 import Board ( Move, dummyMove, movePosChoices, movePos )
 import Color ( Color(..) )
-import Position ( Position, makeValidPosition )
+import Position ( Position, mkPosition )
 import Display ( movePosChoicesNomenclature, boardWithFlipCountDisplay, gameStateDisplay, gameSummaryDisplay, colorAllCapsString )
 import Engine ( SuggestionSearchDepth(..), computerChoose, strategyDisplay, bestNextMove, searchPhrase )
 import Lib ( getValidChoice ) 
@@ -85,7 +85,7 @@ handlePersonChoose color numberedMovesWithPos moves s@(SuggestionSearchDepth sea
         handlePersonChoose color numberedMovesWithPos moves s history
     else if n == choiceNumberFor_Suggest then do
         let pos = movePos $ bestNextMove searchDepth taggedState
-        let index = fst $ fromMaybe (0, makeValidPosition 1 1) $ find (\(_, pos') -> pos == pos') numberedMovesWithPos
+        let index = fst $ fromMaybe (0, mkPosition 1 1) $ find (\(_, pos') -> pos == pos') numberedMovesWithPos
         putStrLn $ "\nComputer suggests (after " ++ searchPhrase searchDepth ++ "): " ++ movePosChoicesNomenclature [(index, pos)]
         handlePersonChoose color numberedMovesWithPos moves s history
     else if n == choiceNumberFor_Undo then do

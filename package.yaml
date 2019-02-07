@@ -28,6 +28,8 @@ dependencies:
 - game-tree
 - safe
 - Plural
+- template-haskell
+- refined
 - tasty
 - tasty-hunit
 

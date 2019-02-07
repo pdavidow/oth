@@ -45,7 +45,7 @@ import Safe ( headMay, tailMay )
 import Color ( Color(..) )
 import Disk ( Disk, diskColor, flipDisk, makeDisk, toggleColor )  
 import BoardSize ( boardSize )
-import Position ( Position, PosRow(..), makeValidPosition, adjacentPositions, posCoords, radiatingPosRows )
+import Position ( Position(..), PosRow(..), BoardCoord, adjacentPositions, posCoords, radiatingPosRows )
 import BlackWhite ( BlackWhite(..) )
 import Lib ( mapTakeWhile ) 
  
@@ -60,7 +60,7 @@ data Tagged_Square
     | Tagged_FilledSquare FilledSquare 
         deriving (Eq, Show)
 
-newtype Board = Board (Array (Int, Int) Tagged_Square) deriving (Eq, Show)
+newtype Board = Board (Array (BoardCoord, BoardCoord) Tagged_Square) deriving (Eq, Show)
 
 newtype FilledRow = FilledRow [FilledSquare] deriving (Eq, Show)
 
@@ -89,7 +89,7 @@ makeBoard =
         makeElem :: (Int, Int) -> Tagged_Square
         makeElem (i,j) =
             Tagged_EmptySquare $ EmptySquare pos $ RadiatingPosRows $ radiatingPosRows pos
-                where pos = makeValidPosition i j
+                where pos = mkPosition i j
     in
         Board $ array ((1,1), (boardSize,boardSize)) 
             [ ((i,j), makeElem (i,j)) | i <- [1..boardSize], j <- [1..boardSize] ]
@@ -109,10 +109,10 @@ boardFromConfig config =
 initialBoard :: Board
 initialBoard = 
     boardFromConfig 
-        [ (White, (makeValidPosition 4 4))
-        , (White, (makeValidPosition 5 5))
-        , (Black, (makeValidPosition 4 5))
-        , (Black, (makeValidPosition 5 4))
+        [ (White, (mkPosition 4 4))
+        , (White, (mkPosition 5 5))
+        , (Black, (mkPosition 4 5))
+        , (Black, (mkPosition 5 4))
         ]
 
 
@@ -355,7 +355,7 @@ applyBoardMove (Move color emptySquare (Outflanks xs)) board =
 
 dummyMove :: Move   
 dummyMove =
-    Move Black (EmptySquare (makeValidPosition 1 1) $ RadiatingPosRows []) (Outflanks [])
+    Move Black (EmptySquare (mkPosition 1 1) $ RadiatingPosRows []) (Outflanks [])
 
 
 cornerCounts_BlackWhite :: Board -> BlackWhite Int
@@ -383,4 +383,4 @@ filledSquaresAdjacentToEmptyCorners board =
 corners :: Board -> [Tagged_Square]
 corners board =
     [(1,1), (1,boardSize), (boardSize,boardSize), (boardSize,1)]
-        & map (\(i,j) -> boardAt board (makeValidPosition i j)) 
+        & map (\(i,j) -> boardAt board (mkPosition i j)) 

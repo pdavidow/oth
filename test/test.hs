@@ -16,7 +16,7 @@ import Disk ( flipCount, toggleColor )
 import State ( CoreState(..), StartState(..), MidState(..), EndState(..), Tagged_State(..), MidStatus(..), EndStatus(..), MoveValidationError(..), makeStartState, priorMoveColor, actual_NextMoves_FromTaggedState, board_FromTaggedState, nextMoveColor_FromTaggedState, makeHistory, applyMoveOnHistory, undoHistoryOnce, isForfeitTurn, nextMovesFrom, unusedDiskCounts_FromTaggedState )
 import UnusedDiskCount ( UnusedDiskCounts, decreaseByOneFor, makeUnusedDiskCounts )
 import BoardSize ( boardSize )
-import Position ( Position, makeValidPosition, posCoords )
+import Position ( Position, mkPosition, posCoords )
 import Display ( boardDisplay, boardWithFlipCountDisplay, gameStateDisplay, showMoveNumInEmptySquare )
 import BlackWhite ( BlackWhite(..) )
 import Lib ( mapTakeWhile )
@@ -36,16 +36,16 @@ board_Figure2 :: Board
 board_Figure2 =
     -- Figure 2, from page 2 of http://www.boardgamecapital.com/game_rules/othello.pdf
     boardFromConfig 
-        [ (White, (makeValidPosition 3 3))
-        , (White, (makeValidPosition 3 7))
-        , (White, (makeValidPosition 7 5))
-        , (Black, (makeValidPosition 4 3))
-        , (Black, (makeValidPosition 4 6))
-        , (Black, (makeValidPosition 5 3))
-        , (Black, (makeValidPosition 5 5))
-        , (Black, (makeValidPosition 6 3))
-        , (Black, (makeValidPosition 6 4))
-        , (Black, (makeValidPosition 7 4))
+        [ (White, (mkPosition 3 3))
+        , (White, (mkPosition 3 7))
+        , (White, (mkPosition 7 5))
+        , (Black, (mkPosition 4 3))
+        , (Black, (mkPosition 4 6))
+        , (Black, (mkPosition 5 3))
+        , (Black, (mkPosition 5 5))
+        , (Black, (mkPosition 6 3))
+        , (Black, (mkPosition 6 4))
+        , (Black, (mkPosition 7 4))
         ]
 
 
@@ -71,171 +71,171 @@ unitTests = testGroup "Unit tests" $
 
     , testGroup "module Position" $
         [ testCase "radiatingPosRows (Position 1 1)" $
-            radiatingPosRows (makeValidPosition 1 1)  @?= 
+            radiatingPosRows (mkPosition 1 1)  @?= 
                 [ PosRow 
-                    [ (makeValidPosition 2 1)
-                    , (makeValidPosition 3 1)
-                    , (makeValidPosition 4 1)
-                    , (makeValidPosition 5 1)
-                    , (makeValidPosition 6 1) 
-                    , (makeValidPosition 7 1)
-                    , (makeValidPosition 8 1)
+                    [ (mkPosition 2 1)
+                    , (mkPosition 3 1)
+                    , (mkPosition 4 1)
+                    , (mkPosition 5 1)
+                    , (mkPosition 6 1) 
+                    , (mkPosition 7 1)
+                    , (mkPosition 8 1)
                     ]
                 , PosRow 
-                    [ (makeValidPosition 1 2)
-                    , (makeValidPosition 1 3)
-                    , (makeValidPosition 1 4)
-                    , (makeValidPosition 1 5)
-                    , (makeValidPosition 1 6)
-                    , (makeValidPosition 1 7)
-                    , (makeValidPosition 1 8)
+                    [ (mkPosition 1 2)
+                    , (mkPosition 1 3)
+                    , (mkPosition 1 4)
+                    , (mkPosition 1 5)
+                    , (mkPosition 1 6)
+                    , (mkPosition 1 7)
+                    , (mkPosition 1 8)
                     ]
                 , PosRow 
-                    [ (makeValidPosition 2 2)
-                    , (makeValidPosition 3 3)
-                    , (makeValidPosition 4 4)
-                    , (makeValidPosition 5 5)
-                    , (makeValidPosition 6 6)
-                    , (makeValidPosition 7 7)
-                    , (makeValidPosition 8 8)
+                    [ (mkPosition 2 2)
+                    , (mkPosition 3 3)
+                    , (mkPosition 4 4)
+                    , (mkPosition 5 5)
+                    , (mkPosition 6 6)
+                    , (mkPosition 7 7)
+                    , (mkPosition 8 8)
                     ]
                 ]
 
         , testCase "radiatingPosRows (Position 1 8)" $
-            radiatingPosRows (makeValidPosition 1 8)  @?= 
+            radiatingPosRows (mkPosition 1 8)  @?= 
               [ PosRow 
-                  [ (makeValidPosition 2 8)
-                  , (makeValidPosition 3 8)
-                  , (makeValidPosition 4 8)
-                  , (makeValidPosition 5 8)
-                  , (makeValidPosition 6 8) 
-                  , (makeValidPosition 7 8)
-                  , (makeValidPosition 8 8)
+                  [ (mkPosition 2 8)
+                  , (mkPosition 3 8)
+                  , (mkPosition 4 8)
+                  , (mkPosition 5 8)
+                  , (mkPosition 6 8) 
+                  , (mkPosition 7 8)
+                  , (mkPosition 8 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 1 7)
-                  , (makeValidPosition 1 6)
-                  , (makeValidPosition 1 5)
-                  , (makeValidPosition 1 4)
-                  , (makeValidPosition 1 3)
-                  , (makeValidPosition 1 2)
-                  , (makeValidPosition 1 1)
+                  [ (mkPosition 1 7)
+                  , (mkPosition 1 6)
+                  , (mkPosition 1 5)
+                  , (mkPosition 1 4)
+                  , (mkPosition 1 3)
+                  , (mkPosition 1 2)
+                  , (mkPosition 1 1)
                   ]
               , PosRow 
-                  [ (makeValidPosition 2 7)
-                  , (makeValidPosition 3 6)
-                  , (makeValidPosition 4 5)
-                  , (makeValidPosition 5 4)
-                  , (makeValidPosition 6 3)
-                  , (makeValidPosition 7 2)
-                  , (makeValidPosition 8 1)
+                  [ (mkPosition 2 7)
+                  , (mkPosition 3 6)
+                  , (mkPosition 4 5)
+                  , (mkPosition 5 4)
+                  , (mkPosition 6 3)
+                  , (mkPosition 7 2)
+                  , (mkPosition 8 1)
                   ]
               ]
 
         , testCase "radiatingPosRows (Position 8 8)" $
-            radiatingPosRows (makeValidPosition 8 8)  @?= 
+            radiatingPosRows (mkPosition 8 8)  @?= 
               [ PosRow 
-                  [ (makeValidPosition 7 8)
-                  , (makeValidPosition 6 8)
-                  , (makeValidPosition 5 8)
-                  , (makeValidPosition 4 8)
-                  , (makeValidPosition 3 8) 
-                  , (makeValidPosition 2 8)
-                  , (makeValidPosition 1 8)
+                  [ (mkPosition 7 8)
+                  , (mkPosition 6 8)
+                  , (mkPosition 5 8)
+                  , (mkPosition 4 8)
+                  , (mkPosition 3 8) 
+                  , (mkPosition 2 8)
+                  , (mkPosition 1 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 8 7)
-                  , (makeValidPosition 8 6)
-                  , (makeValidPosition 8 5)
-                  , (makeValidPosition 8 4)
-                  , (makeValidPosition 8 3)
-                  , (makeValidPosition 8 2)
-                  , (makeValidPosition 8 1)
+                  [ (mkPosition 8 7)
+                  , (mkPosition 8 6)
+                  , (mkPosition 8 5)
+                  , (mkPosition 8 4)
+                  , (mkPosition 8 3)
+                  , (mkPosition 8 2)
+                  , (mkPosition 8 1)
                   ]
               , PosRow 
-                  [ (makeValidPosition 7 7)
-                  , (makeValidPosition 6 6)
-                  , (makeValidPosition 5 5)
-                  , (makeValidPosition 4 4)
-                  , (makeValidPosition 3 3)
-                  , (makeValidPosition 2 2)
-                  , (makeValidPosition 1 1)
+                  [ (mkPosition 7 7)
+                  , (mkPosition 6 6)
+                  , (mkPosition 5 5)
+                  , (mkPosition 4 4)
+                  , (mkPosition 3 3)
+                  , (mkPosition 2 2)
+                  , (mkPosition 1 1)
                   ]
               ]
 
         , testCase "radiatingPosRows (Position 8 1)" $
-            radiatingPosRows (makeValidPosition 8 1)  @?= 
+            radiatingPosRows (mkPosition 8 1)  @?= 
               [ PosRow 
-                  [ (makeValidPosition 7 1)
-                  , (makeValidPosition 6 1)
-                  , (makeValidPosition 5 1)
-                  , (makeValidPosition 4 1)
-                  , (makeValidPosition 3 1) 
-                  , (makeValidPosition 2 1)
-                  , (makeValidPosition 1 1)
+                  [ (mkPosition 7 1)
+                  , (mkPosition 6 1)
+                  , (mkPosition 5 1)
+                  , (mkPosition 4 1)
+                  , (mkPosition 3 1) 
+                  , (mkPosition 2 1)
+                  , (mkPosition 1 1)
                   ]
               , PosRow 
-                  [ (makeValidPosition 8 2)
-                  , (makeValidPosition 8 3)
-                  , (makeValidPosition 8 4)
-                  , (makeValidPosition 8 5)
-                  , (makeValidPosition 8 6)
-                  , (makeValidPosition 8 7)
-                  , (makeValidPosition 8 8)
+                  [ (mkPosition 8 2)
+                  , (mkPosition 8 3)
+                  , (mkPosition 8 4)
+                  , (mkPosition 8 5)
+                  , (mkPosition 8 6)
+                  , (mkPosition 8 7)
+                  , (mkPosition 8 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 7 2)
-                  , (makeValidPosition 6 3)
-                  , (makeValidPosition 5 4)
-                  , (makeValidPosition 4 5)
-                  , (makeValidPosition 3 6)
-                  , (makeValidPosition 2 7)
-                  , (makeValidPosition 1 8)
+                  [ (mkPosition 7 2)
+                  , (mkPosition 6 3)
+                  , (mkPosition 5 4)
+                  , (mkPosition 4 5)
+                  , (mkPosition 3 6)
+                  , (mkPosition 2 7)
+                  , (mkPosition 1 8)
                   ]
               ]
 
         , testCase "radiatingPosRows Black (Position 5 6)" $
-            radiatingPosRows (makeValidPosition 5 6)  @?= 
+            radiatingPosRows (mkPosition 5 6)  @?= 
               [ PosRow 
-                  [ (makeValidPosition 4 6)
-                  , (makeValidPosition 3 6)
-                  , (makeValidPosition 2 6)
-                  , (makeValidPosition 1 6)
+                  [ (mkPosition 4 6)
+                  , (mkPosition 3 6)
+                  , (mkPosition 2 6)
+                  , (mkPosition 1 6)
                   ]
               , PosRow 
-                  [ (makeValidPosition 6 6)
-                  , (makeValidPosition 7 6)
-                  , (makeValidPosition 8 6)
+                  [ (mkPosition 6 6)
+                  , (mkPosition 7 6)
+                  , (mkPosition 8 6)
                   ]
               , PosRow 
-                  [ (makeValidPosition 5 7)
-                  , (makeValidPosition 5 8)
+                  [ (mkPosition 5 7)
+                  , (mkPosition 5 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 5 5)
-                  , (makeValidPosition 5 4)
-                  , (makeValidPosition 5 3)
-                  , (makeValidPosition 5 2)
-                  , (makeValidPosition 5 1)
+                  [ (mkPosition 5 5)
+                  , (mkPosition 5 4)
+                  , (mkPosition 5 3)
+                  , (mkPosition 5 2)
+                  , (mkPosition 5 1)
                   ]
               , PosRow 
-                  [ (makeValidPosition 4 7)
-                  , (makeValidPosition 3 8)
+                  [ (mkPosition 4 7)
+                  , (mkPosition 3 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 4 5)
-                  , (makeValidPosition 3 4)
-                  , (makeValidPosition 2 3)
-                  , (makeValidPosition 1 2)
+                  [ (mkPosition 4 5)
+                  , (mkPosition 3 4)
+                  , (mkPosition 2 3)
+                  , (mkPosition 1 2)
                   ]
               , PosRow 
-                  [ (makeValidPosition 6 7)
-                  , (makeValidPosition 7 8)
+                  [ (mkPosition 6 7)
+                  , (mkPosition 7 8)
                   ]
               , PosRow 
-                  [ (makeValidPosition 6 5)
-                  , (makeValidPosition 7 4)
-                  , (makeValidPosition 8 3)
+                  [ (mkPosition 6 5)
+                  , (mkPosition 7 4)
+                  , (mkPosition 8 3)
                   ]
               ]
           ]
@@ -271,25 +271,25 @@ unitTests = testGroup "Unit tests" $
                   posCoords pos0 @?= (4,3)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(makeValidPosition 4 4)]] 
+                  outflanks0 @?= [PosRow [(mkPosition 4 4)]] 
 
                 , testCase "move 1" $
                   posCoords pos1 @?= (3,4)     
 
                 , testCase "outflanks 1" $
-                  outflanks1 @?= [PosRow [(makeValidPosition 4 4)]]                   
+                  outflanks1 @?= [PosRow [(mkPosition 4 4)]]                   
 
                 , testCase "move 2" $
                   posCoords pos2 @?= (6,5)    
 
                 , testCase "outflanks 2" $
-                  outflanks2 @?= [PosRow [(makeValidPosition 5 5)]]                        
+                  outflanks2 @?= [PosRow [(mkPosition 5 5)]]                        
 
                 , testCase "move 3" $
                   posCoords pos3 @?= (5,6)           
 
                 , testCase "outflanks 3" $
-                  outflanks3 @?= [PosRow [(makeValidPosition 5 5)]]                                                                        
+                  outflanks3 @?= [PosRow [(mkPosition 5 5)]]                                                                        
                 ]
 
         , testGroup "validMoves Black board_Figure2" $
@@ -313,25 +313,25 @@ unitTests = testGroup "Unit tests" $
                   posCoords pos0 @?= (2,3)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(makeValidPosition 3 3)]] 
+                  outflanks0 @?= [PosRow [(mkPosition 3 3)]] 
 
                 , testCase "move 1" $
                   posCoords pos1 @?= (2,8)     
 
                 , testCase "outflanks 1" $
-                  outflanks1 @?= [PosRow [(makeValidPosition 3 7)]]                   
+                  outflanks1 @?= [PosRow [(mkPosition 3 7)]]                   
 
                 , testCase "move 2" $
                   posCoords pos2 @?= (7,6)    
 
                 , testCase "outflanks 2" $
-                  outflanks2 @?= [PosRow [(makeValidPosition 7 5)]]                        
+                  outflanks2 @?= [PosRow [(mkPosition 7 5)]]                        
 
                 , testCase "move 3" $
                   posCoords pos3 @?= (8,6)           
 
                 , testCase "outflanks 3" $
-                  outflanks3 @?= [PosRow [(makeValidPosition 7 5)]]                                                                        
+                  outflanks3 @?= [PosRow [(mkPosition 7 5)]]                                                                        
                 ]   
 
         , testGroup "validMoves White board_Figure2" $
@@ -351,16 +351,16 @@ unitTests = testGroup "Unit tests" $
                   posCoords pos0 @?= (4,2)
 
                 , testCase "outflanks 0" $
-                  outflanks0 @?= [PosRow [(makeValidPosition 5 3), (makeValidPosition 6 4)]] 
+                  outflanks0 @?= [PosRow [(mkPosition 5 3), (mkPosition 6 4)]] 
 
                 , testCase "move 1" $
                   posCoords pos1 @?= (7,3)     
 
                 , testCase "outflanks 1" $
                   outflanks1 @?= 
-                      [ PosRow [(makeValidPosition 6 3), (makeValidPosition 5 3), (makeValidPosition 4 3)]
-                      , PosRow [(makeValidPosition 7 4)]
-                      , PosRow [(makeValidPosition 6 4), (makeValidPosition 5 5), (makeValidPosition 4 6)]
+                      [ PosRow [(mkPosition 6 3), (mkPosition 5 3), (mkPosition 4 3)]
+                      , PosRow [(mkPosition 7 4)]
+                      , PosRow [(mkPosition 6 4), (mkPosition 5 5), (mkPosition 4 6)]
                       ]                                                                                      
                 ]  
 
@@ -492,15 +492,15 @@ unitTests = testGroup "Unit tests" $
                       (StartState c n (CoreState u board)) = makeStartState
 
                       board' = boardFromConfig $ 
-                          [(Black, (makeValidPosition 1 1))] ++ 
-                          [(White, (makeValidPosition 2 boardSize))] ++
-                          [(White, (makeValidPosition 3 boardSize))] ++
-                          [(White, (makeValidPosition 4 boardSize))] ++
-                          [(White, (makeValidPosition 5 boardSize))] ++
-                          [(White, (makeValidPosition 6 boardSize))] ++
-                          [(White, (makeValidPosition 7 boardSize))] ++
-                          [(White, (makeValidPosition boardSize boardSize))] ++
-                          tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
+                          [(Black, (mkPosition 1 1))] ++ 
+                          [(White, (mkPosition 2 boardSize))] ++
+                          [(White, (mkPosition 3 boardSize))] ++
+                          [(White, (mkPosition 4 boardSize))] ++
+                          [(White, (mkPosition 5 boardSize))] ++
+                          [(White, (mkPosition 6 boardSize))] ++
+                          [(White, (mkPosition 7 boardSize))] ++
+                          [(White, (mkPosition boardSize boardSize))] ++
+                          tail [ (White,(mkPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
                       taggedState1 = Tagged_StartState $ StartState Black (nextMovesFrom c board') $ CoreState u board'
                       history1 = NE.fromList $ [taggedState1]
@@ -517,7 +517,7 @@ unitTests = testGroup "Unit tests" $
                     let
                         (StartState c n (CoreState u board)) = makeStartState
 
-                        board' = boardFromConfig $ [(Black, (makeValidPosition 1 1))] ++ tail [ (White,(makeValidPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
+                        board' = boardFromConfig $ [(Black, (mkPosition 1 1))] ++ tail [ (White,(mkPosition i j))  | i <- [1..boardSize], j <- [1..(boardSize-1)] ]
 
                         taggedState1 = Tagged_StartState $ StartState c (nextMovesFrom c board') $ CoreState u board'
                         history1 = NE.fromList $ [taggedState1]
@@ -569,7 +569,7 @@ unitTests = testGroup "Unit tests" $
                       let
                           (StartState c n (CoreState u board)) = makeStartState
 
-                          board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                          board' = boardFromConfig  [ (White,(mkPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                           taggedState1 = Tagged_StartState $ StartState c ((nextMovesFrom c board')) $ CoreState u board'
                           history1 = NE.fromList $ [taggedState1]
@@ -616,7 +616,7 @@ unitTests = testGroup "Unit tests" $
                   , testGroup "WrongColor, NoAvailableDisk, NotOutflanking (contrived)" $
                       let
                           startState@(StartState c n (CoreState u board)) = makeStartState
-                          board' = boardFromConfig  [ (White,(makeValidPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
+                          board' = boardFromConfig  [ (White,(mkPosition i j))  | i <- [1..(boardSize)], j <- [1..(boardSize-1)] ]
 
                           (BlackWhite nb nw) = unusedDiskCounts_FromTaggedState $ Tagged_StartState startState
                           
