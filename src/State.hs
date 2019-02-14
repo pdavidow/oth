@@ -1,5 +1,5 @@
 {-# LANGUAGE InstanceSigs #-}
- 
+
 module State
     ( CoreState(..) 
     , StartState(..)
@@ -413,158 +413,147 @@ isForfeitTurn taggedState =
             False
 
 
----------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------
--- Ideally should be in separate 'Heuristic' module, but that causes circular dependencies
----------------------------------------------------------------------------------------------
-
--- Assume: boardSize == 8
-
--- https://kartikkukreja.wordpress.com/2013/03/30/heuristic-function-for-reversiothello/
-
--- https://courses.cs.washington.edu/courses/cse573/04au/Project/mini1/RUSSIA/Final_Paper.pdf
-    -- MaxPlayer to move next (section 4.1)
-
-heuristic_pieceDifference :: Color -> Board -> Double 
-heuristic_pieceDifference myColor board = 
-    let
-        (BlackWhite b w) = squaresColoredCounts_BlackWhite board
-
-        ( myCount, opCount ) = 
-            if myColor == Black then
-                ( b, w )
-            else
-                ( w, b )
-
-        total = myCount + opCount
-    in
-        if myCount > opCount then
-            100 * fromIntegral myCount / fromIntegral total
-        else if myCount < opCount then
-            -100 * fromIntegral opCount / fromIntegral total
-        else
-            0
-
-
-heuristic_frontierDisks :: Color -> Board -> Double 
-heuristic_frontierDisks myColor board = 
-    let
-        filledSquares' = filledSquares board
-            & map (posCoords . toPos . Tagged_FilledSquare)
-            & concatMap 
-                ( \ (i,j) -> 
-                    let
-                        xs = map (i +) [-1, -1,  0,  1,  1,  1,  0, -1] 
-                        ys = map (j +) [ 0,  1,  1,  1,  0, -1, -1, -1]
-                    in
-                        zip xs ys
-                            & filter (\ (x,y) -> isValidCoords (x,y) && (isEmptyAt (makeValidPosition x y) board))
-                            & mapMaybe (\ _ -> toFilledSquare $ boardAt board $ makeValidPosition i j)
-                )
-
-        count = \ color -> length $ filter (isSquareColored color) filledSquares'
-
-        myCount = count myColor
-        opCount = count $ toggleColor myColor
-
-        total = myCount + opCount
-    in
-        if myCount > opCount then
-            -100 * fromIntegral myCount / fromIntegral total
-        else if myCount < opCount then
-            100 * fromIntegral opCount / fromIntegral total
-        else
-            0
-
-
-heuristic_diskSquares :: Color -> Board -> Double 
-heuristic_diskSquares myColor board = 
-    let
-        v = listArray ((1,1), (8,8))
-            [ 20, -3, 11,  8,  8, 11, -3, 20
-            , -3, -7, -4,  1,  1, -4, -7, -3
-            , 11, -4,  2,  2,  2,  2, -4, 11
-            ,  8,  1,  2, -3, -3,  2,  1,  8
-            ,  8,  1,  2, -3, -3,  2,  1,  8
-            , 11, -4,  2,  2,  2,  2, -4, 11
-            , -3, -7, -4,  1,  1, -4, -7, -3
-            , 20, -3, 11,  8,  8, 11, -3, 20
-            ]
-
-        weight = \ color ->
-            boardSquaresColored color board
-                & map ((!) v . posCoords . toPos . Tagged_FilledSquare)
-                & sum
-                
-        myWeight = weight myColor
-        opWeight = weight $ toggleColor myColor
-    in
-        myWeight - opWeight
-
-
-heuristic_cornerOccupancy :: Color -> Board -> Double 
-heuristic_cornerOccupancy myColor board = 
-    let       
-        (BlackWhite b w) = cornerCounts_BlackWhite board
-
-        ( myCornerCount, oppCornerCount ) =
-            if myColor == Black then ( b, w )
-            else ( w, b )
-    in
-        25 * fromIntegral (myCornerCount - oppCornerCount)
-
-
-heuristic_cornerCloseness :: Color -> Board -> Double 
-heuristic_cornerCloseness myColor board = 
-    let
-        xs = filledSquaresAdjacentToEmptyCorners board
-        count = \ color -> length $ filter (isSquareColored color) xs
-
-        myCount = count myColor
-        opCount = count $ toggleColor myColor
-    in
-        -12.5 * fromIntegral (myCount - opCount)
-
-
-heuristic_mobility :: Color -> [Move] -> Board -> Double 
-heuristic_mobility myColor nextMoves board = 
-    let
-        opColor = toggleColor myColor
-
-        myMoveCount = length nextMoves
-        oppMoveCount = length $ validMoves opColor board
-
-        total = myMoveCount + oppMoveCount
-    in
-        if myMoveCount > oppMoveCount then
-            100 * fromIntegral myMoveCount / fromIntegral total
-        else if myMoveCount < oppMoveCount then
-            -100 * fromIntegral oppMoveCount / fromIntegral total
-        else
-            0
-
-
 heuristic_score :: Tagged_State -> Double 
 heuristic_score taggedState = 
-    case taggedState of
-        Tagged_StartState _  -> 
-            1 -- constant whatever
-
-        Tagged_MidState midState -> 
+    -- Assume: boardSize == 8
+    -- https://kartikkukreja.wordpress.com/2013/03/30/heuristic-function-for-reversiothello/
+    -- https://courses.cs.washington.edu/courses/cse573/04au/Project/mini1/RUSSIA/Final_Paper.pdf
+        -- MaxPlayer to move next (section 4.1)
+    let
+        heuristic_pieceDifference :: Color -> Board -> Double 
+        heuristic_pieceDifference myColor board = 
             let
-                nextMoveColor = nextMoveColor_FromMidState midState
-                nextMoves = actual_NextMoves_FromTaggedState taggedState
-                board = board_FromTaggedState taggedState
+                (BlackWhite b w) = squaresColoredCounts_BlackWhite board
+        
+                ( myCount, opCount ) = 
+                    if myColor == Black then
+                        ( b, w )
+                    else
+                        ( w, b )
+        
+                total = myCount + opCount
             in
-                (10 * heuristic_pieceDifference nextMoveColor board) + 
-                    (801.724 * heuristic_cornerOccupancy nextMoveColor board) + 
-                        (382.026 * heuristic_cornerCloseness nextMoveColor board) + 
-                            (78.922 * heuristic_mobility nextMoveColor nextMoves board) + 
-                                (74.396 * heuristic_frontierDisks nextMoveColor board) + 
-                                    (10 * heuristic_diskSquares nextMoveColor board)                        
+                if myCount > opCount then
+                    100 * fromIntegral myCount / fromIntegral total
+                else if myCount < opCount then
+                    -100 * fromIntegral opCount / fromIntegral total
+                else
+                    0
+        
+        
+        heuristic_frontierDisks :: Color -> Board -> Double 
+        heuristic_frontierDisks myColor board = 
+            let
+                filledSquares' = filledSquares board
+                    & map (posCoords . toPos . Tagged_FilledSquare)
+                    & concatMap 
+                        ( \ (i,j) -> 
+                            let
+                                xs = map (i +) [-1, -1,  0,  1,  1,  1,  0, -1] 
+                                ys = map (j +) [ 0,  1,  1,  1,  0, -1, -1, -1]
+                            in
+                                zip xs ys
+                                    & filter (\ (x,y) -> isValidCoords (x,y) && (isEmptyAt (makeValidPosition x y) board))
+                                    & mapMaybe (\ _ -> toFilledSquare $ boardAt board $ makeValidPosition i j)
+                        )
+        
+                count = \ color -> length $ filter (isSquareColored color) filledSquares'
+        
+                myCount = count myColor
+                opCount = count $ toggleColor myColor
+        
+                total = myCount + opCount
+            in
+                if myCount > opCount then
+                    -100 * fromIntegral myCount / fromIntegral total
+                else if myCount < opCount then
+                    100 * fromIntegral opCount / fromIntegral total
+                else
+                    0
+        
+        
+        heuristic_diskSquares :: Color -> Board -> Double 
+        heuristic_diskSquares myColor board = 
+            let
+                v = listArray ((1,1), (8,8))
+                    [ 20, -3, 11,  8,  8, 11, -3, 20
+                    , -3, -7, -4,  1,  1, -4, -7, -3
+                    , 11, -4,  2,  2,  2,  2, -4, 11
+                    ,  8,  1,  2, -3, -3,  2,  1,  8
+                    ,  8,  1,  2, -3, -3,  2,  1,  8
+                    , 11, -4,  2,  2,  2,  2, -4, 11
+                    , -3, -7, -4,  1,  1, -4, -7, -3
+                    , 20, -3, 11,  8,  8, 11, -3, 20
+                    ]
+        
+                weight = \ color ->
+                    boardSquaresColored color board
+                        & map ((!) v . posCoords . toPos . Tagged_FilledSquare)
+                        & sum
+                        
+                myWeight = weight myColor
+                opWeight = weight $ toggleColor myColor
+            in
+                myWeight - opWeight
+        
+        
+        heuristic_cornerOccupancy :: Color -> Board -> Double 
+        heuristic_cornerOccupancy myColor board = 
+            let       
+                (BlackWhite b w) = cornerCounts_BlackWhite board
+        
+                ( myCornerCount, oppCornerCount ) =
+                    if myColor == Black then ( b, w )
+                    else ( w, b )
+            in
+                25 * fromIntegral (myCornerCount - oppCornerCount)
+        
+        
+        heuristic_cornerCloseness :: Color -> Board -> Double 
+        heuristic_cornerCloseness myColor board = 
+            let
+                xs = filledSquaresAdjacentToEmptyCorners board
+                count = \ color -> length $ filter (isSquareColored color) xs
+        
+                myCount = count myColor
+                opCount = count $ toggleColor myColor
+            in
+                -12.5 * fromIntegral (myCount - opCount)
+        
+        
+        heuristic_mobility :: Color -> [Move] -> Board -> Double 
+        heuristic_mobility myColor nextMoves board = 
+            let
+                opColor = toggleColor myColor
+        
+                myMoveCount = length nextMoves
+                oppMoveCount = length $ validMoves opColor board
+        
+                total = myMoveCount + oppMoveCount
+            in
+                if myMoveCount > oppMoveCount then
+                    100 * fromIntegral myMoveCount / fromIntegral total
+                else if myMoveCount < oppMoveCount then
+                    -100 * fromIntegral oppMoveCount / fromIntegral total
+                else
+                    0
+    in
+        case taggedState of
+            Tagged_StartState _  -> 
+                1 -- constant whatever
 
-        Tagged_EndState (EndState (PriorMove (Move color _ _)) _ (CoreState _ board)) -> 
-            heuristic_pieceDifference (toggleColor color) board
+            Tagged_MidState midState -> 
+                let
+                    nextMoveColor = nextMoveColor_FromMidState midState
+                    nextMoves = actual_NextMoves_FromTaggedState taggedState
+                    board = board_FromTaggedState taggedState
+                in
+                    (10 * heuristic_pieceDifference nextMoveColor board) + 
+                        (801.724 * heuristic_cornerOccupancy nextMoveColor board) + 
+                            (382.026 * heuristic_cornerCloseness nextMoveColor board) + 
+                                (78.922 * heuristic_mobility nextMoveColor nextMoves board) + 
+                                    (74.396 * heuristic_frontierDisks nextMoveColor board) + 
+                                        (10 * heuristic_diskSquares nextMoveColor board)                        
 
----------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------
+            Tagged_EndState (EndState (PriorMove (Move color _ _)) _ (CoreState _ board)) -> 
+                heuristic_pieceDifference (toggleColor color) board
